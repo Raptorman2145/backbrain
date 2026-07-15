@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cipher Decoder</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .mode-tab {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active {
+    color: var(--accent-bg);
+    border-bottom-color: var(--accent-bg);
+  }
+
+  .mode-panel { display: none; max-width: 600px; }
+  .mode-panel.active { display: block; }
+
+  textarea, input[type="number"], input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Consolas', monospace;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  textarea:focus, input:focus {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+  textarea { min-height: 90px; resize: vertical; }
+
+  .shift-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .shift-row label { font-size: 13px; color: var(--text-muted); }
+  .shift-row input[type="number"] { width: 80px; }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin: 14px 0;
+  }
+  button.action {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+  button.action.secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+  }
+
+  .error-msg {
+    color: var(--accent-bg);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .brute-list {
+    margin-top: 20px;
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+  .brute-row {
+    display: flex;
+    gap: 12px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .brute-row:last-child { border-bottom: none; }
+  .brute-row:hover { background: var(--surface-alt); }
+  .brute-shift { color: var(--text-muted); width: 40px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+  <h1>Cipher Decoder</h1>
+  <p class="sub">Caesar/shift cipher and Base64 — encode, decode, or brute-force an unknown shift.</p>
+
+  <div class="mode-tabs">
+    <button type="button" class="mode-tab active" data-mode="shift">Caesar / Shift</button>
+    <button type="button" class="mode-tab" data-mode="base64">Base64</button>
+  </div>
+
+  <div class="mode-panel active" id="panel-shift">
+    <textarea id="shiftInput" placeholder="Enter text..."></textarea>
+    <div class="shift-row">
+      <label for="shiftAmount">Shift amount:</label>
+      <input type="number" id="shiftAmount" value="3">
+    </div>
+    <div class="btn-row">
+      <button type="button" class="action" id="shiftEncodeBtn">Encode</button>
+      <button type="button" class="action secondary" id="shiftDecodeBtn">Decode</button>
+      <button type="button" class="action secondary" id="shiftBruteBtn">Brute-force all shifts</button>
+    </div>
+    <textarea id="shiftOutput" placeholder="Result..." readonly></textarea>
+    <div class="brute-list" id="shiftBruteList" hidden></div>
+  </div>
+
+  <div class="mode-panel" id="panel-base64">
+    <textarea id="b64Input" placeholder="Enter text..."></textarea>
+    <div class="btn-row">
+      <button type="button" class="action" id="b64EncodeBtn">Encode</button>
+      <button type="button" class="action secondary" id="b64DecodeBtn">Decode</button>
+    </div>
+    <textarea id="b64Output" placeholder="Result..." readonly></textarea>
+    <div class="error-msg" id="b64Error" hidden></div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    // --- Mode tabs ---
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`panel-${tab.dataset.mode}`).classList.add('active');
+      });
+    });
+
+    // --- Caesar / Shift cipher ---
+    function caesarShift(text, shift) {
+      return text.replace(/[a-zA-Z]/g, c => {
+        const base = c === c.toUpperCase() ? 65 : 97;
+        return String.fromCharCode((((c.charCodeAt(0) - base + shift) % 26) + 26) % 26 + base);
+      });
+    }
+
+    const shiftInput = document.getElementById('shiftInput');
+    const shiftAmount = document.getElementById('shiftAmount');
+    const shiftOutput = document.getElementById('shiftOutput');
+    const shiftBruteList = document.getElementById('shiftBruteList');
+
+    document.getElementById('shiftEncodeBtn').addEventListener('click', () => {
+      shiftBruteList.hidden = true;
+      shiftOutput.value = caesarShift(shiftInput.value, parseInt(shiftAmount.value, 10) || 0);
+    });
+
+    document.getElementById('shiftDecodeBtn').addEventListener('click', () => {
+      shiftBruteList.hidden = true;
+      shiftOutput.value = caesarShift(shiftInput.value, -(parseInt(shiftAmount.value, 10) || 0));
+    });
+
+    document.getElementById('shiftBruteBtn').addEventListener('click', () => {
+      shiftOutput.value = '';
+      shiftBruteList.hidden = false;
+      shiftBruteList.innerHTML = Array.from({ length: 25 }, (_, i) => i + 1).map(n => `
+        <div class="brute-row" data-shift="${n}"><span class="brute-shift">-${n}</span>${caesarShift(shiftInput.value, -n)}</div>
+      `).join('');
+      shiftBruteList.querySelectorAll('.brute-row').forEach(row => {
+        row.addEventListener('click', () => {
+          shiftAmount.value = row.dataset.shift;
+          shiftOutput.value = caesarShift(shiftInput.value, -parseInt(row.dataset.shift, 10));
+          shiftBruteList.hidden = true;
+        });
+      });
+    });
+
+    // --- Base64 ---
+    function b64Encode(str) {
+      const bytes = new TextEncoder().encode(str);
+      let binary = '';
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      return btoa(binary);
+    }
+
+    function b64Decode(str) {
+      const binary = atob(str);
+      const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    }
+
+    const b64Input = document.getElementById('b64Input');
+    const b64Output = document.getElementById('b64Output');
+    const b64Error = document.getElementById('b64Error');
+
+    document.getElementById('b64EncodeBtn').addEventListener('click', () => {
+      b64Error.hidden = true;
+      b64Output.value = b64Encode(b64Input.value);
+    });
+
+    document.getElementById('b64DecodeBtn').addEventListener('click', () => {
+      try {
+        b64Output.value = b64Decode(b64Input.value.trim());
+        b64Error.hidden = true;
+      } catch (e) {
+        b64Output.value = '';
+        b64Error.textContent = 'Not valid Base64.';
+        b64Error.hidden = false;
+      }
+    });
+  </script>
+</body>
+</html>

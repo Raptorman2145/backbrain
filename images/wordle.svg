@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <rect width="600" height="600" fill="#121213"/>
+  <g font-family="Segoe UI, sans-serif" font-weight="700" text-anchor="middle">
+    <rect x="140" y="150" width="80" height="80" rx="6" fill="#538d4e"/>
+    <text x="180" y="205" font-size="40" fill="#fff">W</text>
+    <rect x="230" y="150" width="80" height="80" rx="6" fill="#3a3a3c"/>
+    <text x="270" y="205" font-size="40" fill="#fff">O</text>
+    <rect x="320" y="150" width="80" height="80" rx="6" fill="#b59f3b"/>
+    <text x="360" y="205" font-size="40" fill="#fff">R</text>
+    <rect x="410" y="150" width="80" height="80" rx="6" fill="#3a3a3c"/>
+    <text x="450" y="205" font-size="40" fill="#fff">D</text>
+
+    <rect x="140" y="240" width="80" height="80" rx="6" fill="#3a3a3c"/>
+    <text x="180" y="295" font-size="40" fill="#fff">L</text>
+    <rect x="230" y="240" width="80" height="80" rx="6" fill="#538d4e"/>
+    <text x="270" y="295" font-size="40" fill="#fff">E</text>
+  </g>
+</svg>

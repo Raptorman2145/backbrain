@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sprite Maker</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  :root { --bg: #1a1a2e; }
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+
+  .sm-header { padding: 20px clamp(16px, 4vw, 48px) 10px; flex-shrink: 0; }
+  .sm-header h1 { margin: 0 0 4px; }
+  .sm-header p.sub { margin: 0; color: var(--text-muted); }
+
+  .sm-layout {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 190px 1fr 260px;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: "tools canvas side" "film film film";
+    padding: 0 clamp(16px, 4vw, 48px) 16px;
+    gap: 12px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  @media (max-width: 900px) {
+    .sm-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto auto minmax(300px, 1fr) auto;
+      grid-template-areas: "tools" "side" "canvas" "film";
+      overflow-y: auto;
+    }
+  }
+
+  .sm-tools, .sm-side {
+    overflow-y: auto;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    box-sizing: border-box;
+  }
+  .sm-tools { grid-area: tools; display: flex; flex-direction: column; gap: 16px; }
+  .sm-side { grid-area: side; display: flex; flex-direction: column; gap: 16px; }
+
+  .sm-canvas-area {
+    grid-area: canvas;
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .sm-film {
+    grid-area: film;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    overflow-x: auto;
+    box-sizing: border-box;
+  }
+
+  .sm-section-label {
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0 0 6px;
+  }
+
+  .tool-btn-row { display: flex; flex-direction: column; gap: 6px; }
+  .tool-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .tool-btn i { width: 16px; text-align: center; }
+  .tool-btn:hover { background: var(--surface-alt); }
+  .tool-btn.active { background: var(--accent-bg); border-color: var(--accent-bg); color: var(--accent-text); }
+
+  .chk-row { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px; cursor: pointer; }
+  .chk-row input { accent-color: var(--accent-bg); }
+
+  .zoom-row { display: flex; align-items: center; gap: 8px; }
+  .zoom-row button {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+  }
+  .zoom-label { font-size: 12px; color: var(--text-muted); min-width: 36px; text-align: center; }
+
+  .sm-canvas-wrap {
+    position: relative;
+    background-image:
+      linear-gradient(45deg, #444 25%, transparent 25%),
+      linear-gradient(-45deg, #444 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #444 75%),
+      linear-gradient(-45deg, transparent 75%, #444 75%);
+    background-size: 16px 16px;
+    background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    background-color: #666;
+    box-shadow: var(--shadow-md);
+    flex-shrink: 0;
+  }
+  #mainCanvas {
+    display: block;
+    image-rendering: pixelated;
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  .color-current-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #colorInput { width: 44px; height: 36px; border: none; padding: 0; border-radius: var(--radius-sm); cursor: pointer; background: none; }
+  .swatch-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+  .swatch { width: 20px; height: 20px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; padding: 0; }
+  .swatch:hover { outline: 2px solid var(--accent-bg); }
+  #addToPaletteBtn {
+    font-size: 12px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .size-row, .export-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .size-row input, .export-row input {
+    width: 56px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+  }
+  .sm-side button.full-btn {
+    width: 100%;
+    padding: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  #downloadGifBtn { background: var(--accent-bg); color: var(--accent-text); border: none; }
+  #resizeBtn { width: auto; flex: 1; }
+
+  .frame-thumb {
+    position: relative;
+    flex-shrink: 0;
+    width: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    border: 2px solid transparent;
+    cursor: pointer;
+  }
+  .frame-thumb.active { border-color: var(--accent-bg); }
+  .frame-thumb.drag-over { background: var(--surface); }
+  .thumb-canvas {
+    image-rendering: pixelated;
+    max-width: 44px;
+    max-height: 44px;
+    width: auto;
+    height: auto;
+    background-image:
+      linear-gradient(45deg, #444 25%, transparent 25%),
+      linear-gradient(-45deg, #444 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #444 75%),
+      linear-gradient(-45deg, transparent 75%, #444 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    background-color: #666;
+    border-radius: 3px;
+  }
+  .frame-thumb-actions { display: flex; gap: 3px; position: absolute; top: -6px; right: -6px; }
+  .frame-thumb-actions button {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    font-size: 9px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .frame-num { font-size: 10px; color: var(--text-muted); }
+  #addFrameBtn {
+    flex-shrink: 0;
+    width: 44px; height: 44px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border-strong);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .sm-playback {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    padding-left: 12px;
+    margin-left: 4px;
+  }
+  #previewCanvas {
+    image-rendering: pixelated;
+    width: 40px; height: 40px;
+    background: #666;
+    border-radius: 3px;
+  }
+  #playBtn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+  #fpsInput {
+    width: 46px;
+    padding: 5px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+  }
+
+  #toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent-bg);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    display: none;
+    z-index: 2000;
+    box-shadow: var(--shadow-md);
+  }
+</style>
+</head>
+<body>
+
+<div class="sm-header">
+  <h1>Sprite Maker</h1>
+  <p class="sub">Draw pixel art, animate it across frames, and export as PNG or an animated GIF. Saved automatically.</p>
+</div>
+
+<div class="sm-layout">
+  <div class="sm-tools">
+    <div>
+      <div class="sm-section-label">Tools</div>
+      <div class="tool-btn-row">
+        <button class="tool-btn" data-tool="pencil" type="button"><i class="fa-solid fa-pencil"></i> Pencil</button>
+        <button class="tool-btn" data-tool="eraser" type="button"><i class="fa-solid fa-eraser"></i> Eraser</button>
+        <button class="tool-btn" data-tool="fill" type="button"><i class="fa-solid fa-fill-drip"></i> Fill</button>
+        <button class="tool-btn" data-tool="eyedropper" type="button"><i class="fa-solid fa-eye-dropper"></i> Eyedropper</button>
+        <button class="tool-btn" data-tool="line" type="button"><i class="fa-solid fa-slash"></i> Line</button>
+        <button class="tool-btn" data-tool="rect" type="button"><i class="fa-regular fa-square"></i> Rectangle</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sm-section-label">Options</div>
+      <label class="chk-row"><input type="checkbox" id="filledChk"> Filled shape</label>
+      <label class="chk-row"><input type="checkbox" id="mirrorXChk"> Mirror X</label>
+      <label class="chk-row"><input type="checkbox" id="mirrorYChk"> Mirror Y</label>
+      <label class="chk-row"><input type="checkbox" id="showGridChk" checked> Show grid</label>
+      <label class="chk-row"><input type="checkbox" id="onionChk" checked> Onion skin</label>
+    </div>
+
+    <div>
+      <div class="sm-section-label">Edit</div>
+      <div class="zoom-row">
+        <button id="undoBtn" type="button" title="Undo (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+        <button id="redoBtn" type="button" title="Redo (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sm-section-label">Zoom</div>
+      <div class="zoom-row">
+        <button id="zoomOutBtn" type="button">&minus;</button>
+        <span class="zoom-label" id="zoomLabel"></span>
+        <button id="zoomInBtn" type="button">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sm-canvas-area">
+    <div class="sm-canvas-wrap" id="canvasWrap">
+      <canvas id="mainCanvas"></canvas>
+    </div>
+  </div>
+
+  <div class="sm-side">
+    <div>
+      <div class="sm-section-label">Color</div>
+      <div class="color-current-row">
+        <input type="color" id="colorInput" value="#000000">
+        <button id="addToPaletteBtn" type="button">+ Add to palette</button>
+      </div>
+      <div class="swatch-grid" id="paletteGrid" style="margin-top: 8px;"></div>
+    </div>
+
+    <div>
+      <div class="sm-section-label">Recent</div>
+      <div class="swatch-grid" id="recentRow"></div>
+    </div>
+
+    <div>
+      <div class="sm-section-label">Canvas Size</div>
+      <div class="size-row">
+        <input type="number" id="widthInput" min="1" max="128" value="16">
+        <span>&times;</span>
+        <input type="number" id="heightInput" min="1" max="128" value="16">
+        <button id="resizeBtn" type="button" class="full-btn">Resize</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sm-section-label">Export</div>
+      <div class="export-row" style="margin-bottom: 8px;">
+        <label for="exportScaleInput" style="font-size: 12px; color: var(--text-muted);">Scale</label>
+        <input type="number" id="exportScaleInput" min="1" max="16" value="8">
+        <span style="font-size: 12px; color: var(--text-muted);">&times;</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <button id="downloadPngBtn" type="button" class="full-btn"><i class="fa-solid fa-image"></i> Download PNG (frame)</button>
+        <button id="downloadSheetBtn" type="button" class="full-btn"><i class="fa-solid fa-table-cells"></i> Download Spritesheet</button>
+        <button id="downloadGifBtn" type="button" class="full-btn"><i class="fa-solid fa-file-video"></i> Download GIF</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="sm-section-label">Project</div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <button id="clearFrameBtn" type="button" class="full-btn">Clear Frame</button>
+        <button id="newProjectBtn" type="button" class="full-btn">New Project</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sm-film">
+    <div id="filmstrip" style="display: flex; align-items: center; gap: 8px;"></div>
+    <div class="sm-playback">
+      <canvas id="previewCanvas"></canvas>
+      <button id="playBtn" type="button"><i class="fa-solid fa-play"></i></button>
+      <input type="number" id="fpsInput" min="1" max="60" value="6">
+      <span style="font-size: 11px; color: var(--text-muted);">fps</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="../../code/General%20Code/sidebar.js"></script>
+<script>
+  const PROJECT_KEY = 'spritemaker_project';
+
+  const DEFAULT_PALETTE = [
+    '#000000', '#1a1a1a', '#4d4d4d', '#808080', '#b3b3b3', '#ffffff',
+    '#7f0000', '#ff0000', '#ff7f7f', '#7f3f00', '#ff7f00', '#ffd37f',
+    '#7f7f00', '#ffff00', '#ffff7f', '#007f00', '#00ff00', '#7fff7f',
+    '#007f7f', '#00ffff', '#7fffff', '#00007f', '#0000ff', '#7f7fff',
+    '#3f007f', '#7f00ff', '#bf7fff', '#7f003f', '#ff007f', '#ff7fbf',
+  ];
+
+  // --- DOM refs ---
+  const mainCanvas = document.getElementById('mainCanvas');
+  const mainCtx = mainCanvas.getContext('2d');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const filmstrip = document.getElementById('filmstrip');
+  const previewCanvas = document.getElementById('previewCanvas');
+  const previewCtx = previewCanvas.getContext('2d');
+  const playBtn = document.getElementById('playBtn');
+  const fpsInput = document.getElementById('fpsInput');
+  const colorInput = document.getElementById('colorInput');
+  const addToPaletteBtn = document.getElementById('addToPaletteBtn');
+  const paletteGrid = document.getElementById('paletteGrid');
+  const recentRow = document.getElementById('recentRow');
+  const widthInput = document.getElementById('widthInput');
+  const heightInput = document.getElementById('heightInput');
+  const resizeBtn = document.getElementById('resizeBtn');
+  const exportScaleInput = document.getElementById('exportScaleInput');
+  const downloadPngBtn = document.getElementById('downloadPngBtn');
+  const downloadSheetBtn = document.getElementById('downloadSheetBtn');
+  const downloadGifBtn = document.getElementById('downloadGifBtn');
+  const clearFrameBtn = document.getElementById('clearFrameBtn');
+  const newProjectBtn = document.getElementById('newProjectBtn');
+  const zoomInBtn = document.getElementById('zoomInBtn');
+  const zoomOutBtn = document.getElementById('zoomOutBtn');
+  const zoomLabel = document.getElementById('zoomLabel');
+  const undoBtn = document.getElementById('undoBtn');
+  const redoBtn = document.getElementById('redoBtn');
+
+  // --- State ---
+  function blankFrame(w, h) { return { pixels: new Array(w * h).fill(null) }; }
+  function defaultProject() {
+    return { width: 16, height: 16, fps: 6, frames: [blankFrame(16, 16)], customPalette: [], recentColors: [] };
+  }
+
+  function loadProject() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PROJECT_KEY));
+      if (saved && Array.isArray(saved.frames) && saved.frames.length && saved.width && saved.height) return saved;
+    } catch {}
+    return defaultProject();
+  }
+
+  let saveTimer = null;
+  function saveProject() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { localStorage.setItem(PROJECT_KEY, JSON.stringify(project)); }, 300);
+  }
+  window.addEventListener('beforeunload', () => {
+    clearTimeout(saveTimer);
+    localStorage.setItem(PROJECT_KEY, JSON.stringify(project));
+  });
+
+  let project = loadProject();
+  let currentFrameIndex = 0;
+  let currentTool = 'pencil';
+  let primaryColor = '#000000';
+  let mirrorX = false;
+  let mirrorY = false;
+  let showGrid = true;
+  let onionSkin = true;
+  let filledShape = false;
+  let zoomScale = 20;
+  let isDrawing = false;
+  let shapeStart = null;
+  let strokeFrameSnapshot = null;
+  let playTimer = null;
+  let playIndex = 0;
+
+  const MAX_UNDO = 50;
+  let undoStack = [];
+  let redoStack = [];
+
+  function currentFrame() { return project.frames[currentFrameIndex]; }
+
+  // Snapshot the affected frame's pixels before a mutating action, so undo
+  // can restore it. Any new snapshot invalidates the redo stack, matching
+  // standard undo/redo semantics.
+  function pushUndoSnapshot() {
+    undoStack.push({ frameIndex: currentFrameIndex, pixels: currentFrame().pixels.slice() });
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    redoStack = [];
+  }
+
+  function restoreSnapshot(snapshot, fromStack, toStack) {
+    const frame = project.frames[snapshot.frameIndex];
+    if (!frame) return;
+    toStack.push({ frameIndex: snapshot.frameIndex, pixels: frame.pixels.slice() });
+    frame.pixels = snapshot.pixels;
+    if (currentFrameIndex !== snapshot.frameIndex) {
+      currentFrameIndex = snapshot.frameIndex;
+      renderFilmstrip();
+    }
+    renderMainCanvas();
+    renderThumb(snapshot.frameIndex);
+    saveProject();
+  }
+
+  function undo() {
+    if (undoStack.length === 0) return;
+    restoreSnapshot(undoStack.pop(), undoStack, redoStack);
+  }
+
+  function redo() {
+    if (redoStack.length === 0) return;
+    restoreSnapshot(redoStack.pop(), redoStack, undoStack);
+  }
+
+  function showToast(message, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = message;
+    t.style.background = isError ? '#c0392b' : 'var(--accent-bg)';
+    t.style.display = 'block';
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(() => { t.style.display = 'none'; }, 2500);
+  }
+
+  // --- Pixel editing helpers ---
+  function setPixel(frame, x, y, color) {
+    frame.pixels[y * project.width + x] = color;
+    if (mirrorX) frame.pixels[y * project.width + (project.width - 1 - x)] = color;
+    if (mirrorY) frame.pixels[(project.height - 1 - y) * project.width + x] = color;
+    if (mirrorX && mirrorY) frame.pixels[(project.height - 1 - y) * project.width + (project.width - 1 - x)] = color;
+  }
+
+  function floodFill(frame, x0, y0, color) {
+    const w = project.width, h = project.height;
+    const idx0 = y0 * w + x0;
+    const target = frame.pixels[idx0];
+    if (target === color) return;
+    const stack = [[x0, y0]];
+    while (stack.length) {
+      const [x, y] = stack.pop();
+      if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      const idx = y * w + x;
+      if (frame.pixels[idx] !== target) continue;
+      frame.pixels[idx] = color;
+      stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+  }
+
+  function linePixels(x0, y0, x1, y1) {
+    const pts = [];
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+    const sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy, x = x0, y = y0;
+    while (true) {
+      pts.push([x, y]);
+      if (x === x1 && y === y1) break;
+      const e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x += sx; }
+      if (e2 <= dx) { err += dx; y += sy; }
+    }
+    return pts;
+  }
+
+  function rectPixels(x0, y0, x1, y1, filled) {
+    const minX = Math.min(x0, x1), maxX = Math.max(x0, x1);
+    const minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
+    const pts = [];
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        if (filled || x === minX || x === maxX || y === minY || y === maxY) pts.push([x, y]);
+      }
+    }
+    return pts;
+  }
+
+  // --- Rendering ---
+  // The canvas backing store is sized in real device pixels (accounting for
+  // devicePixelRatio) while drawing code keeps using simple logical
+  // coordinates (x * zoomScale) via this transform. Without it, at any
+  // non-100% OS/browser zoom (e.g. Windows' very common 125%/150% scaling)
+  // fillRect coordinates land on fractional physical pixels, which is what
+  // caused soft/uneven pixel edges.
+  let onionCanvas = null;
+  let onionCtx = null;
+  function getOnionBuffer() {
+    if (!onionCanvas) {
+      onionCanvas = document.createElement('canvas');
+      onionCtx = onionCanvas.getContext('2d');
+    }
+    return { canvas: onionCanvas, ctx: onionCtx };
+  }
+
+  function resizeMainCanvasElement() {
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = project.width * zoomScale;
+    const cssHeight = project.height * zoomScale;
+    mainCanvas.style.width = cssWidth + 'px';
+    mainCanvas.style.height = cssHeight + 'px';
+    mainCanvas.width = Math.round(cssWidth * dpr);
+    mainCanvas.height = Math.round(cssHeight * dpr);
+    mainCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    canvasWrap.style.width = cssWidth + 'px';
+    canvasWrap.style.height = cssHeight + 'px';
+    zoomLabel.textContent = zoomScale + 'px';
+  }
+
+  function drawFramePixels(ctx, frame, alpha) {
+    ctx.globalAlpha = alpha;
+    for (let y = 0; y < project.height; y++) {
+      for (let x = 0; x < project.width; x++) {
+        const c = frame.pixels[y * project.width + x];
+        if (c) {
+          ctx.fillStyle = c;
+          ctx.fillRect(x * zoomScale, y * zoomScale, zoomScale, zoomScale);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function renderMainCanvas() {
+    const cssW = project.width * zoomScale;
+    const cssH = project.height * zoomScale;
+    mainCtx.clearRect(0, 0, cssW, cssH);
+
+    if (onionSkin && currentFrameIndex > 0) {
+      // Draw the previous frame fully opaque into an offscreen buffer, then
+      // composite that buffer once at reduced alpha. Blending many adjacent
+      // translucent fillRect calls directly (the old approach) let each
+      // rect's edge antialiasing show through as visible seams between
+      // onion-skinned pixels; a single composite has no seams to show.
+      const { canvas: oc, ctx: octx } = getOnionBuffer();
+      if (oc.width !== mainCanvas.width || oc.height !== mainCanvas.height) {
+        oc.width = mainCanvas.width;
+        oc.height = mainCanvas.height;
+      }
+      const dpr = window.devicePixelRatio || 1;
+      octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      octx.clearRect(0, 0, cssW, cssH);
+      drawFramePixels(octx, project.frames[currentFrameIndex - 1], 1);
+      mainCtx.globalAlpha = 0.3;
+      mainCtx.drawImage(oc, 0, 0, cssW, cssH);
+      mainCtx.globalAlpha = 1;
+    }
+
+    drawFramePixels(mainCtx, currentFrame(), 1);
+
+    if (showGrid && zoomScale >= 4) {
+      mainCtx.strokeStyle = 'rgba(255,255,255,0.15)';
+      mainCtx.lineWidth = 1;
+      for (let x = 0; x <= project.width; x++) {
+        mainCtx.beginPath();
+        mainCtx.moveTo(x * zoomScale + 0.5, 0);
+        mainCtx.lineTo(x * zoomScale + 0.5, cssH);
+        mainCtx.stroke();
+      }
+      for (let y = 0; y <= project.height; y++) {
+        mainCtx.beginPath();
+        mainCtx.moveTo(0, y * zoomScale + 0.5);
+        mainCtx.lineTo(cssW, y * zoomScale + 0.5);
+        mainCtx.stroke();
+      }
+    }
+  }
+
+  function renderThumb(i) {
+    const c = filmstrip.querySelector('canvas[data-index="' + i + '"]');
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, project.width, project.height);
+    const frame = project.frames[i];
+    for (let y = 0; y < project.height; y++) {
+      for (let x = 0; x < project.width; x++) {
+        const col = frame.pixels[y * project.width + x];
+        if (col) { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); }
+      }
+    }
+  }
+
+  function renderFilmstrip() {
+    filmstrip.innerHTML = project.frames.map((frame, i) => `
+      <div class="frame-thumb ${i === currentFrameIndex ? 'active' : ''}" draggable="true" data-index="${i}">
+        <canvas class="thumb-canvas" data-index="${i}" width="${project.width}" height="${project.height}"></canvas>
+        <div class="frame-thumb-actions">
+          <button class="dup-frame" data-index="${i}" title="Duplicate frame" type="button"><i class="fa-solid fa-copy"></i></button>
+          <button class="del-frame" data-index="${i}" title="Delete frame" type="button"><i class="fa-solid fa-trash"></i></button>
+        </div>
+        <div class="frame-num">${i + 1}</div>
+      </div>
+    `).join('') + '<button id="addFrameBtn" type="button" title="Add frame"><i class="fa-solid fa-plus"></i></button>';
+
+    project.frames.forEach((frame, i) => renderThumb(i));
+    attachFilmstripHandlers();
+  }
+
+  function attachFilmstripHandlers() {
+    filmstrip.querySelectorAll('.frame-thumb').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        currentFrameIndex = Number(el.dataset.index);
+        renderMainCanvas();
+        renderFilmstrip();
+      });
+      el.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', el.dataset.index);
+      });
+      el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
+      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+      el.addEventListener('drop', e => {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        const from = Number(e.dataTransfer.getData('text/plain'));
+        const to = Number(el.dataset.index);
+        if (from === to || Number.isNaN(from)) return;
+        const [moved] = project.frames.splice(from, 1);
+        project.frames.splice(to, 0, moved);
+        if (currentFrameIndex === from) currentFrameIndex = to;
+        saveProject();
+        renderFilmstrip();
+        renderMainCanvas();
+      });
+    });
+    filmstrip.querySelectorAll('.dup-frame').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        const i = Number(el.dataset.index);
+        project.frames.splice(i + 1, 0, { pixels: project.frames[i].pixels.slice() });
+        currentFrameIndex = i + 1;
+        saveProject();
+        renderFilmstrip();
+        renderMainCanvas();
+      });
+    });
+    filmstrip.querySelectorAll('.del-frame').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        if (project.frames.length <= 1) { showToast('Need at least one frame', true); return; }
+        const i = Number(el.dataset.index);
+        project.frames.splice(i, 1);
+        if (currentFrameIndex >= project.frames.length) currentFrameIndex = project.frames.length - 1;
+        saveProject();
+        renderFilmstrip();
+        renderMainCanvas();
+      });
+    });
+    const addFrameBtn = document.getElementById('addFrameBtn');
+    addFrameBtn.addEventListener('click', () => {
+      project.frames.splice(currentFrameIndex + 1, 0, blankFrame(project.width, project.height));
+      currentFrameIndex++;
+      saveProject();
+      renderFilmstrip();
+      renderMainCanvas();
+    });
+  }
+
+  // --- Color / palette ---
+  function setPrimaryColor(c) {
+    primaryColor = c;
+    colorInput.value = c;
+    pushRecentColor(c);
+  }
+  function pushRecentColor(c) {
+    project.recentColors = [c, ...project.recentColors.filter(x => x !== c)].slice(0, 10);
+    saveProject();
+    renderRecent();
+  }
+  function renderPalette() {
+    const combined = DEFAULT_PALETTE.concat(project.customPalette);
+    paletteGrid.innerHTML = combined.map(c =>
+      `<button class="swatch" style="background:${c}" data-color="${c}" title="${c}" type="button"></button>`
+    ).join('');
+    paletteGrid.querySelectorAll('.swatch').forEach(btn => {
+      btn.addEventListener('click', () => setPrimaryColor(btn.dataset.color));
+    });
+  }
+  function renderRecent() {
+    recentRow.innerHTML = project.recentColors.length
+      ? project.recentColors.map(c =>
+          `<button class="swatch" style="background:${c}" data-color="${c}" title="${c}" type="button"></button>`
+        ).join('')
+      : '<span style="font-size:11px;color:var(--text-muted);">None yet</span>';
+    recentRow.querySelectorAll('.swatch').forEach(btn => {
+      btn.addEventListener('click', () => setPrimaryColor(btn.dataset.color));
+    });
+  }
+
+  // --- Tools ---
+  function setTool(name) {
+    currentTool = name;
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === name));
+  }
+  document.querySelectorAll('.tool-btn').forEach(b => {
+    b.addEventListener('click', () => setTool(b.dataset.tool));
+  });
+
+  function cellFromEvent(e) {
+    const rect = mainCanvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / (rect.width / project.width));
+    const y = Math.floor((e.clientY - rect.top) / (rect.height / project.height));
+    return {
+      x: Math.min(Math.max(x, 0), project.width - 1),
+      y: Math.min(Math.max(y, 0), project.height - 1),
+    };
+  }
+
+  mainCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  mainCanvas.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    const { x, y } = cellFromEvent(e);
+    const frame = currentFrame();
+
+    if (currentTool === 'eyedropper') {
+      const c = frame.pixels[y * project.width + x];
+      if (c) setPrimaryColor(c);
+      setTool('pencil');
+      return;
+    }
+
+    pushUndoSnapshot();
+
+    if (currentTool === 'fill') {
+      floodFill(frame, x, y, primaryColor);
+      if (mirrorX) floodFill(frame, project.width - 1 - x, y, primaryColor);
+      if (mirrorY) floodFill(frame, x, project.height - 1 - y, primaryColor);
+      if (mirrorX && mirrorY) floodFill(frame, project.width - 1 - x, project.height - 1 - y, primaryColor);
+      renderMainCanvas();
+      renderThumb(currentFrameIndex);
+      saveProject();
+      return;
+    }
+
+    mainCanvas.setPointerCapture(e.pointerId);
+    isDrawing = true;
+    shapeStart = { x, y };
+    if (currentTool === 'pencil') setPixel(frame, x, y, primaryColor);
+    else if (currentTool === 'eraser') setPixel(frame, x, y, null);
+    else if (currentTool === 'line' || currentTool === 'rect') strokeFrameSnapshot = frame.pixels.slice();
+    renderMainCanvas();
+  });
+
+  mainCanvas.addEventListener('pointermove', e => {
+    if (!isDrawing) return;
+    const { x, y } = cellFromEvent(e);
+    const frame = currentFrame();
+    if (currentTool === 'pencil') {
+      setPixel(frame, x, y, primaryColor);
+      renderMainCanvas();
+    } else if (currentTool === 'eraser') {
+      setPixel(frame, x, y, null);
+      renderMainCanvas();
+    } else if (currentTool === 'line') {
+      frame.pixels = strokeFrameSnapshot.slice();
+      linePixels(shapeStart.x, shapeStart.y, x, y).forEach(([px, py]) => setPixel(frame, px, py, primaryColor));
+      renderMainCanvas();
+    } else if (currentTool === 'rect') {
+      frame.pixels = strokeFrameSnapshot.slice();
+      rectPixels(shapeStart.x, shapeStart.y, x, y, filledShape).forEach(([px, py]) => setPixel(frame, px, py, primaryColor));
+      renderMainCanvas();
+    }
+  });
+
+  function endStroke() {
+    if (!isDrawing) return;
+    isDrawing = false;
+    strokeFrameSnapshot = null;
+    renderThumb(currentFrameIndex);
+    saveProject();
+  }
+  mainCanvas.addEventListener('pointerup', endStroke);
+  mainCanvas.addEventListener('pointercancel', endStroke);
+
+  // --- Option toggles ---
+  document.getElementById('filledChk').addEventListener('change', e => { filledShape = e.target.checked; });
+  document.getElementById('mirrorXChk').addEventListener('change', e => { mirrorX = e.target.checked; });
+  document.getElementById('mirrorYChk').addEventListener('change', e => { mirrorY = e.target.checked; });
+  document.getElementById('showGridChk').addEventListener('change', e => { showGrid = e.target.checked; renderMainCanvas(); });
+  document.getElementById('onionChk').addEventListener('change', e => { onionSkin = e.target.checked; renderMainCanvas(); });
+
+  colorInput.addEventListener('input', () => setPrimaryColor(colorInput.value));
+  addToPaletteBtn.addEventListener('click', () => {
+    if (!project.customPalette.includes(primaryColor)) {
+      project.customPalette.push(primaryColor);
+      saveProject();
+      renderPalette();
+    }
+  });
+
+  zoomInBtn.addEventListener('click', () => { zoomScale = Math.min(48, zoomScale + 4); resizeMainCanvasElement(); renderMainCanvas(); });
+  undoBtn.addEventListener('click', undo);
+  redoBtn.addEventListener('click', redo);
+  document.addEventListener('keydown', e => {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    const key = e.key.toLowerCase();
+    if (!(e.ctrlKey || e.metaKey) || (key !== 'z' && key !== 'y')) return;
+    e.preventDefault();
+    if (key === 'y' || (key === 'z' && e.shiftKey)) redo();
+    else undo();
+  });
+  zoomOutBtn.addEventListener('click', () => { zoomScale = Math.max(4, zoomScale - 4); resizeMainCanvasElement(); renderMainCanvas(); });
+
+  // --- Canvas resize ---
+  function resizeFramePixels(frame, oldW, oldH, newW, newH) {
+    const pixels = new Array(newW * newH).fill(null);
+    const copyW = Math.min(oldW, newW), copyH = Math.min(oldH, newH);
+    for (let y = 0; y < copyH; y++) {
+      for (let x = 0; x < copyW; x++) {
+        pixels[y * newW + x] = frame.pixels[y * oldW + x];
+      }
+    }
+    return { pixels };
+  }
+  resizeBtn.addEventListener('click', () => {
+    const newW = Math.max(1, Math.min(128, Number(widthInput.value) || project.width));
+    const newH = Math.max(1, Math.min(128, Number(heightInput.value) || project.height));
+    if (newW === project.width && newH === project.height) return;
+    if (!confirm('Resize canvas? Pixels outside the new bounds will be lost.')) {
+      widthInput.value = project.width;
+      heightInput.value = project.height;
+      return;
+    }
+    project.frames = project.frames.map(f => resizeFramePixels(f, project.width, project.height, newW, newH));
+    project.width = newW;
+    project.height = newH;
+    widthInput.value = newW;
+    heightInput.value = newH;
+    saveProject();
+    resizeMainCanvasElement();
+    renderMainCanvas();
+    renderFilmstrip();
+  });
+
+  // --- Frame playback preview ---
+  function renderPreviewFrame() {
+    previewCanvas.width = project.width;
+    previewCanvas.height = project.height;
+    previewCtx.clearRect(0, 0, project.width, project.height);
+    const frame = project.frames[playIndex % project.frames.length];
+    for (let y = 0; y < project.height; y++) {
+      for (let x = 0; x < project.width; x++) {
+        const col = frame.pixels[y * project.width + x];
+        if (col) { previewCtx.fillStyle = col; previewCtx.fillRect(x, y, 1, 1); }
+      }
+    }
+  }
+  function playAnimation() {
+    stopAnimation();
+    playIndex = currentFrameIndex;
+    renderPreviewFrame();
+    playTimer = setInterval(() => {
+      playIndex = (playIndex + 1) % project.frames.length;
+      renderPreviewFrame();
+    }, 1000 / project.fps);
+    playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+  }
+  function stopAnimation() {
+    clearInterval(playTimer);
+    playTimer = null;
+    playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+  }
+  playBtn.addEventListener('click', () => { playTimer ? stopAnimation() : playAnimation(); });
+
+  fpsInput.addEventListener('change', () => {
+    const v = Math.max(1, Math.min(60, Number(fpsInput.value) || 6));
+    project.fps = v;
+    fpsInput.value = v;
+    saveProject();
+    if (playTimer) playAnimation();
+  });
+
+  // --- Project-level actions ---
+  clearFrameBtn.addEventListener('click', () => {
+    if (!confirm('Clear the current frame?')) return;
+    pushUndoSnapshot();
+    currentFrame().pixels.fill(null);
+    saveProject();
+    renderMainCanvas();
+    renderThumb(currentFrameIndex);
+  });
+  newProjectBtn.addEventListener('click', () => {
+    if (!confirm('Start a new project? This clears everything unsaved.')) return;
+    project = defaultProject();
+    currentFrameIndex = 0;
+    localStorage.setItem(PROJECT_KEY, JSON.stringify(project));
+    widthInput.value = project.width;
+    heightInput.value = project.height;
+    fpsInput.value = project.fps;
+    resizeMainCanvasElement();
+    renderAll();
+  });
+
+  // --- Export: PNG / spritesheet ---
+  function getExportScale() {
+    return Math.max(1, Math.min(16, Number(exportScaleInput.value) || 1));
+  }
+  function frameToCanvas(frame, scale) {
+    const c = document.createElement('canvas');
+    c.width = project.width * scale;
+    c.height = project.height * scale;
+    const ctx = c.getContext('2d');
+    for (let y = 0; y < project.height; y++) {
+      for (let x = 0; x < project.width; x++) {
+        const col = frame.pixels[y * project.width + x];
+        if (col) { ctx.fillStyle = col; ctx.fillRect(x * scale, y * scale, scale, scale); }
+      }
+    }
+    return c;
+  }
+  function downloadCanvasAsPNG(canvas, filename) {
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  }
+  downloadPngBtn.addEventListener('click', () => {
+    const c = frameToCanvas(currentFrame(), getExportScale());
+    downloadCanvasAsPNG(c, 'sprite-frame-' + (currentFrameIndex + 1) + '.png');
+  });
+  downloadSheetBtn.addEventListener('click', () => {
+    const scale = getExportScale();
+    const c = document.createElement('canvas');
+    c.width = project.width * scale * project.frames.length;
+    c.height = project.height * scale;
+    const ctx = c.getContext('2d');
+    project.frames.forEach((frame, i) => {
+      for (let y = 0; y < project.height; y++) {
+        for (let x = 0; x < project.width; x++) {
+          const col = frame.pixels[y * project.width + x];
+          if (col) {
+            ctx.fillStyle = col;
+            ctx.fillRect(i * project.width * scale + x * scale, y * scale, scale, scale);
+          }
+        }
+      }
+    });
+    downloadCanvasAsPNG(c, 'spritesheet.png');
+  });
+
+  // --- Export: animated GIF (self-contained GIF89a + LZW encoder, no external libs) ---
+  function hexToRgb(hex) {
+    const n = parseInt(hex.replace('#', ''), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+
+  function lzwEncode(indices, minCodeSize) {
+    const clearCode = 1 << minCodeSize;
+    const endCode = clearCode + 1;
+    let codeSize, nextCode, dict;
+    function resetDict() {
+      dict = new Map();
+      nextCode = endCode + 1;
+      codeSize = minCodeSize + 1;
+    }
+    resetDict();
+
+    const output = [];
+    let bitBuffer = 0, bitCount = 0;
+    function emitCode(code) {
+      bitBuffer |= (code << bitCount);
+      bitCount += codeSize;
+      while (bitCount >= 8) {
+        output.push(bitBuffer & 0xFF);
+        bitBuffer >>= 8;
+        bitCount -= 8;
+      }
+    }
+
+    emitCode(clearCode);
+    let currentCode = -1;
+    for (let i = 0; i < indices.length; i++) {
+      const pixel = indices[i];
+      if (currentCode === -1) { currentCode = pixel; continue; }
+      const key = currentCode + ',' + pixel;
+      if (dict.has(key)) {
+        currentCode = dict.get(key);
+      } else {
+        emitCode(currentCode);
+        if (nextCode < 4096) {
+          dict.set(key, nextCode);
+          nextCode++;
+          if (nextCode === (1 << codeSize) && codeSize < 12) codeSize++;
+        } else {
+          emitCode(clearCode);
+          resetDict();
+        }
+        currentCode = pixel;
+      }
+    }
+    if (currentCode !== -1) emitCode(currentCode);
+    emitCode(endCode);
+    if (bitCount > 0) output.push(bitBuffer & 0xFF);
+    return output;
+  }
+
+  function assembleGIF(width, height, frameIndexArrays, palette, minCodeSize, delayCs) {
+    const bytes = [];
+    const pushByte = b => bytes.push(b & 0xFF);
+    const pushString = s => { for (let i = 0; i < s.length; i++) pushByte(s.charCodeAt(i)); };
+    const pushShort = v => { pushByte(v & 0xFF); pushByte((v >> 8) & 0xFF); };
+
+    pushString('GIF89a');
+    pushShort(width);
+    pushShort(height);
+    const sizeExp = minCodeSize - 1;
+    pushByte(0x80 | (sizeExp << 4) | sizeExp);
+    pushByte(0);
+    pushByte(0);
+
+    palette.forEach(c => { pushByte(c[0]); pushByte(c[1]); pushByte(c[2]); });
+
+    pushByte(0x21); pushByte(0xFF); pushByte(0x0B);
+    pushString('NETSCAPE2.0');
+    pushByte(0x03); pushByte(0x01); pushShort(0); pushByte(0x00);
+
+    frameIndexArrays.forEach(indices => {
+      pushByte(0x21); pushByte(0xF9); pushByte(0x04);
+      pushByte((2 << 2) | 1);
+      pushShort(delayCs);
+      pushByte(0);
+      pushByte(0x00);
+
+      pushByte(0x2C);
+      pushShort(0); pushShort(0);
+      pushShort(width); pushShort(height);
+      pushByte(0x00);
+
+      pushByte(minCodeSize);
+      const lzwBytes = lzwEncode(indices, minCodeSize);
+      let pos = 0;
+      while (pos < lzwBytes.length) {
+        const chunk = Math.min(255, lzwBytes.length - pos);
+        pushByte(chunk);
+        for (let i = 0; i < chunk; i++) pushByte(lzwBytes[pos + i]);
+        pos += chunk;
+      }
+      pushByte(0x00);
+    });
+
+    pushByte(0x3B);
+    return new Uint8Array(bytes);
+  }
+
+  function buildAnimatedGIF(frames, w, h, scale, fps) {
+    const outW = w * scale, outH = h * scale;
+
+    const colorToIndex = new Map();
+    const colors = [];
+    frames.forEach(frame => {
+      frame.pixels.forEach(c => {
+        if (c && !colorToIndex.has(c)) {
+          colorToIndex.set(c, colors.length + 1);
+          colors.push(c);
+        }
+      });
+    });
+    if (colors.length > 255) {
+      throw new Error('Too many unique colors for GIF export (max 255 + transparent). Simplify the palette.');
+    }
+
+    const totalEntries = colors.length + 1;
+    let minCodeSize = 2;
+    while ((1 << minCodeSize) < totalEntries) minCodeSize++;
+    const tableSize = 1 << minCodeSize;
+
+    const paletteRGB = [[0, 0, 0]];
+    colors.forEach(hex => paletteRGB.push(hexToRgb(hex)));
+    while (paletteRGB.length < tableSize) paletteRGB.push([0, 0, 0]);
+
+    const frameIndexArrays = frames.map(frame => {
+      const idx = new Uint8Array(outW * outH);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const c = frame.pixels[y * w + x];
+          const paletteIndex = c ? colorToIndex.get(c) : 0;
+          for (let dy = 0; dy < scale; dy++) {
+            const rowStart = (y * scale + dy) * outW + x * scale;
+            for (let dx = 0; dx < scale; dx++) idx[rowStart + dx] = paletteIndex;
+          }
+        }
+      }
+      return idx;
+    });
+
+    const delayCs = Math.max(2, Math.round(100 / fps));
+    return assembleGIF(outW, outH, frameIndexArrays, paletteRGB, minCodeSize, delayCs);
+  }
+
+  downloadGifBtn.addEventListener('click', () => {
+    try {
+      const scale = getExportScale();
+      const bytes = buildAnimatedGIF(project.frames, project.width, project.height, scale, project.fps);
+      const blob = new Blob([bytes], { type: 'image/gif' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sprite-animation.gif';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showToast(err.message || 'GIF export failed', true);
+    }
+  });
+
+  // --- Init ---
+  function renderAll() {
+    resizeMainCanvasElement();
+    renderMainCanvas();
+    renderFilmstrip();
+    renderPalette();
+    renderRecent();
+  }
+
+  widthInput.value = project.width;
+  heightInput.value = project.height;
+  fpsInput.value = project.fps;
+  setTool('pencil');
+  setPrimaryColor(project.recentColors[0] || DEFAULT_PALETTE[0]);
+  renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+:root { --bg: #200a0a; }
+
+html, body { height: 100%; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 40px clamp(16px, 4vw, 48px);
+  background: var(--bg);
+  color: var(--text);
+}
+h1 { margin-bottom: 4px; }
+p.sub { color: var(--text-muted); margin-top: 0; }
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: var(--accent-bg);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+.back-link:hover { text-decoration: underline; }
+
+.credit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.credit-item {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-alt);
+  box-shadow: var(--shadow-sm);
+}
+.credit-item .title {
+  font-weight: 600;
+}
+.credit-item .meta {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.credit-item a {
+  color: var(--accent-bg);
+}
+
+.empty-state {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 24px 0;
+}

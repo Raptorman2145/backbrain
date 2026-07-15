@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Wheel Spinner</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .spinner-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+    align-items: flex-start;
+  }
+
+  .wheel-area {
+    position: relative;
+    width: min(360px, 90vw);
+    flex-shrink: 0;
+  }
+  .wheel-pointer {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 22px solid var(--text);
+    z-index: 2;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+  }
+  #wheelSvg {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 50%;
+    box-shadow: var(--shadow-md);
+    transition: transform 4.2s cubic-bezier(0.12, 0.72, 0.14, 1);
+  }
+  .wheel-hub {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20%;
+    height: 20%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: var(--bg-dark, #14171a);
+    border: 3px solid var(--accent-bg);
+    z-index: 1;
+  }
+  .wheel-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 0 20px;
+  }
+
+  #spinBtn {
+    margin-top: 18px;
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+  #spinBtn:hover { filter: brightness(1.08); }
+  #spinBtn:disabled { opacity: 0.5; cursor: default; filter: none; }
+
+  #resultBanner {
+    margin-top: 12px;
+    min-height: 30px;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent-bg);
+    text-align: center;
+  }
+
+  .entries-panel { flex: 1; min-width: 260px; }
+  .entries-panel h2 { font-size: 15px; margin: 0 0 10px; }
+  #entryForm { display: flex; gap: 8px; margin-bottom: 12px; }
+  #entryInput {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  #entryForm button {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  #entryForm button:hover { border-color: var(--accent-bg); }
+
+  #entryList { list-style: none; margin: 0 0 14px; padding: 0; max-height: 320px; overflow-y: auto; }
+  #entryList li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  #entryList .entry-swatch { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  #entryList .entry-name { flex: 1; }
+  #entryList .entry-remove {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 6px;
+  }
+  #entryList .entry-remove:hover { color: #ff6b6b; }
+  #emptyHint { color: var(--text-muted); font-size: 13px; padding: 8px 0; }
+
+  .spinner-options {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .spinner-options input { accent-color: var(--accent-bg); }
+  #clearAllBtn {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <h1>Wheel Spinner</h1>
+  <p class="sub">Add some options, then spin to pick one at random.</p>
+
+  <div class="spinner-layout">
+    <div class="wheel-area">
+      <div class="wheel-pointer"></div>
+      <svg id="wheelSvg" viewBox="0 0 300 300"></svg>
+      <div class="wheel-hub"></div>
+      <button type="button" id="spinBtn">Spin</button>
+      <div id="resultBanner"></div>
+    </div>
+
+    <div class="entries-panel">
+      <h2>Options</h2>
+      <form id="entryForm">
+        <input type="text" id="entryInput" placeholder="Add an option..." autocomplete="off">
+        <button type="submit">Add</button>
+      </form>
+      <label class="spinner-options">
+        <input type="checkbox" id="removeWinnerChk">
+        Remove the winner from the wheel after each spin
+      </label>
+      <ul id="entryList"></ul>
+      <button type="button" id="clearAllBtn">Clear All</button>
+    </div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const STORAGE_KEY = "wheelspinner_entries";
+    const wheelSvg = document.getElementById("wheelSvg");
+    const entryForm = document.getElementById("entryForm");
+    const entryInput = document.getElementById("entryInput");
+    const entryList = document.getElementById("entryList");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const spinBtn = document.getElementById("spinBtn");
+    const resultBanner = document.getElementById("resultBanner");
+    const removeWinnerChk = document.getElementById("removeWinnerChk");
+
+    let entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null") || ["Pizza", "Tacos", "Sushi", "Burgers"];
+    let spinning = false;
+    let currentRotation = 0;
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    }
+
+    // Same rejection-sampled CSPRNG approach as Dice Roller, so the winner
+    // is a genuinely fair pick, not just Math.random().
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function sliceColor(i, total) {
+      return `hsl(${Math.round((i * 360) / total)}, 68%, 54%)`;
+    }
+
+    function polarPoint(cx, cy, r, angleDeg) {
+      const rad = ((angleDeg - 90) * Math.PI) / 180;
+      return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+    }
+
+    function renderWheel() {
+      const n = entries.length;
+      if (n === 0) {
+        wheelSvg.innerHTML = `<foreignObject x="0" y="0" width="300" height="300"><div xmlns="http://www.w3.org/1999/xhtml" class="wheel-empty">Add a few options to build the wheel.</div></foreignObject>`;
+        spinBtn.disabled = true;
+        return;
+      }
+      spinBtn.disabled = spinning;
+
+      const cx = 150, cy = 150, r = 148;
+      const sliceAngle = 360 / n;
+      let svg = "";
+
+      entries.forEach((entry, i) => {
+        const start = i * sliceAngle;
+        const end = start + sliceAngle;
+        const p1 = polarPoint(cx, cy, r, start);
+        const p2 = polarPoint(cx, cy, r, end);
+        const largeArc = sliceAngle > 180 ? 1 : 0;
+        const path = n === 1
+          ? `M ${cx} ${cy} m -${r}, 0 a ${r},${r} 0 1,0 ${r * 2},0 a ${r},${r} 0 1,0 -${r * 2},0`
+          : `M ${cx} ${cy} L ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${largeArc} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)} Z`;
+        svg += `<path d="${path}" fill="${sliceColor(i, n)}" stroke="rgba(0,0,0,0.35)" stroke-width="1.5" />`;
+
+        if (n > 1) {
+          const labelPoint = polarPoint(cx, cy, r * 0.62, start + sliceAngle / 2);
+          const rotate = start + sliceAngle / 2;
+          const label = entry.length > 14 ? entry.slice(0, 13) + "…" : entry;
+          svg += `<text x="${labelPoint.x.toFixed(2)}" y="${labelPoint.y.toFixed(2)}" fill="#fff" font-size="13" font-weight="700" text-anchor="middle" dominant-baseline="middle" transform="rotate(${(rotate).toFixed(2)} ${labelPoint.x.toFixed(2)} ${labelPoint.y.toFixed(2)})" style="text-shadow: 0 1px 2px rgba(0,0,0,0.6)">${label}</text>`;
+        }
+      });
+
+      wheelSvg.innerHTML = svg;
+    }
+
+    function renderEntryList() {
+      entryList.innerHTML = entries.length
+        ? entries.map((entry, i) => `
+            <li>
+              <span class="entry-swatch" style="background:${sliceColor(i, entries.length)}"></span>
+              <span class="entry-name">${entry}</span>
+              <button type="button" class="entry-remove" data-index="${i}" aria-label="Remove">&times;</button>
+            </li>
+          `).join("")
+        : `<div id="emptyHint">No options yet — add a few above.</div>`;
+
+      entryList.querySelectorAll(".entry-remove").forEach(btn => {
+        btn.addEventListener("click", () => {
+          entries.splice(Number(btn.dataset.index), 1);
+          save();
+          renderEntryList();
+          renderWheel();
+        });
+      });
+    }
+
+    entryForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const value = entryInput.value.trim();
+      if (!value) return;
+      entries.push(value);
+      entryInput.value = "";
+      save();
+      renderEntryList();
+      renderWheel();
+    });
+
+    clearAllBtn.addEventListener("click", () => {
+      entries = [];
+      save();
+      renderEntryList();
+      renderWheel();
+      resultBanner.textContent = "";
+    });
+
+    spinBtn.addEventListener("click", () => {
+      const n = entries.length;
+      if (n === 0 || spinning) return;
+      spinning = true;
+      spinBtn.disabled = true;
+      resultBanner.textContent = "";
+
+      const winnerIndex = secureRandomInt(n);
+      const sliceAngle = 360 / n;
+      const winnerCenter = winnerIndex * sliceAngle + sliceAngle / 2;
+      // Land the pointer (fixed at the top) on the winning slice's center,
+      // with a small random jitter within the slice so it doesn't look
+      // robotically precise, plus several full spins for visual flair.
+      const jitter = (secureRandomInt(1000) / 1000 - 0.5) * sliceAngle * 0.7;
+      const extraSpins = 5 + secureRandomInt(3);
+      const targetRotation = currentRotation - (currentRotation % 360) + extraSpins * 360 + (360 - winnerCenter) + jitter;
+
+      currentRotation = targetRotation;
+      wheelSvg.style.transform = `rotate(${targetRotation}deg)`;
+
+      setTimeout(() => {
+        spinning = false;
+        resultBanner.textContent = entries[winnerIndex];
+        if (removeWinnerChk.checked) {
+          entries.splice(winnerIndex, 1);
+          save();
+          renderEntryList();
+          renderWheel();
+          currentRotation = currentRotation % 360;
+          wheelSvg.style.transition = "none";
+          wheelSvg.style.transform = `rotate(${currentRotation}deg)`;
+          void wheelSvg.offsetHeight;
+          wheelSvg.style.transition = "";
+        } else {
+          spinBtn.disabled = false;
+        }
+      }, 4300);
+    });
+
+    renderEntryList();
+    renderWheel();
+  </script>
+</body>
+</html>

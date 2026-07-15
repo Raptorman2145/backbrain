@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Settings</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../code/CSS/shared.css">
+<link rel="stylesheet" href="../code/CSS/settings.css">
+</head>
+<body>
+  <h1>Settings</h1>
+  <p class="sub">Manage what this site has saved in your browser.</p>
+
+  <div class="settings-section">
+    <h2>Appearance</h2>
+    <p class="settings-note">These apply across the whole site, not just this page.</p>
+
+    <div class="settings-block">
+      <label class="settings-block-label">Theme (color, background scene, font, and cursor together)</label>
+      <div class="theme-list" id="themeList"></div>
+      <div class="theme-custom-row" id="themeCustomRow" hidden>
+        <input type="color" id="accentColorInput" value="#e64848">
+        <span>Pick any color (clears the scene/font/cursor from whatever theme was active)</span>
+      </div>
+    </div>
+
+    <label class="settings-toggle-row">
+      <input type="checkbox" id="reduceMotionChk">
+      Reduce motion (turns off animations and transitions site-wide)
+    </label>
+  </div>
+
+  <div class="settings-section">
+    <h2>Keyboard Shortcuts</h2>
+    <p class="settings-note">Also available anywhere on the site by pressing <kbd>?</kbd>.</p>
+    <div class="shortcuts-list" id="settingsShortcutsList"></div>
+  </div>
+
+  <div class="settings-section">
+    <h2>Your Data</h2>
+    <p class="settings-note">
+      Everything below is stored only in this browser (localStorage) — nothing is sent anywhere else.
+      This site doesn't use cookies or a service worker cache, so there's nothing there to export.
+      Your browser's actual HTTP cache can't be read or exported by any website's JavaScript —
+      that's a browser security boundary, not a gap in this page.
+    </p>
+
+    <div class="settings-actions">
+      <button type="button" id="exportDataBtn" class="settings-btn primary">Export All Data</button>
+      <button type="button" id="importDataBtn" class="settings-btn">Import Data</button>
+      <input type="file" id="importFileInput" accept="application/json" hidden>
+      <button type="button" id="clearDataBtn" class="settings-btn danger">Clear All Data</button>
+    </div>
+
+    <div class="settings-keys" id="settingsKeyList"></div>
+  </div>
+
+  <script src="../code/General%20Code/sidebar.js"></script>
+  <script src="../code/General%20Code/settings.js"></script>
+</body>
+</html>

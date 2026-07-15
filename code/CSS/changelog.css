@@ -1,0 +1,51 @@
+:root { --bg: #200a0a; }
+
+html, body { height: 100%; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 40px clamp(16px, 4vw, 48px);
+  background: var(--bg);
+  color: var(--text);
+}
+h1 { margin-bottom: 4px; }
+p.sub { color: var(--text-muted); margin-top: 0; margin-bottom: 28px; }
+
+.changelog-entry { margin-bottom: 32px; }
+.changelog-entry:last-child { margin-bottom: 0; }
+.changelog-date {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-bg);
+  font-weight: 700;
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border-strong);
+}
+.changelog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.changelog-list li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.changelog-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+}

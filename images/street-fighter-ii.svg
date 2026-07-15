@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <defs>
+    <linearGradient id="bgL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7a1a1a"/>
+      <stop offset="100%" stop-color="#3a0a0a"/>
+    </linearGradient>
+    <linearGradient id="bgR" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#0a0a3a"/>
+      <stop offset="100%" stop-color="#1a1a7a"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="300" height="600" fill="url(#bgL)"/>
+  <rect x="300" y="0" width="300" height="600" fill="url(#bgR)"/>
+  <g fill="#f3c98b">
+    <rect x="120" y="270" width="110" height="60" rx="28"/>
+    <rect x="370" y="270" width="110" height="60" rx="28"/>
+  </g>
+  <g fill="#7a1a1a">
+    <circle cx="130" cy="300" r="30"/>
+  </g>
+  <g fill="#1a1a7a">
+    <circle cx="470" cy="300" r="30"/>
+  </g>
+  <text x="300" y="315" font-family="Segoe UI, sans-serif" font-weight="800" font-size="54" fill="#ffd23f" text-anchor="middle">VS</text>
+</svg>

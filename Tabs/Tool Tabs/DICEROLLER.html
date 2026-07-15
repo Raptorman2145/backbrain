@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dice Roller</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .dice-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dice-buttons button {
+    padding: 14px 20px;
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+  .dice-buttons button:hover { border-color: var(--accent-bg); }
+  .dice-buttons button:active { transform: scale(0.96); }
+
+  #rollResult {
+    font-size: 48px;
+    font-weight: 900;
+    color: var(--accent-bg);
+    margin-bottom: 8px;
+    min-height: 60px;
+  }
+  #rollLabel {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  #clearHistoryBtn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+
+  #rollHistory {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-width: 400px;
+  }
+  #rollHistory li {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  #rollHistory li:first-child { color: var(--text); }
+
+  .calc-section {
+    max-width: 460px;
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .calc-section h2 { font-size: 16px; margin: 0 0 10px; }
+  .calc-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .calc-row select, .calc-row input {
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .calc-row input[type="number"] { width: 64px; }
+  .calc-row button {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+  #calcBreakdown { color: var(--text-muted); font-size: 13px; margin-bottom: 4px; min-height: 18px; }
+  #calcResult { font-size: 28px; font-weight: 900; color: var(--accent-bg); }
+</style>
+</head>
+<body>
+  <h1>Dice Roller</h1>
+  <p class="sub">Click a button to roll.</p>
+
+  <div class="dice-buttons">
+    <button type="button" data-type="coin">Coin</button>
+    <button type="button" data-type="d4">D4</button>
+    <button type="button" data-type="d6">D6</button>
+    <button type="button" data-type="d10">D10</button>
+    <button type="button" data-type="d20">D20</button>
+  </div>
+
+  <div id="rollResult">—</div>
+  <div id="rollLabel">Roll something to begin.</div>
+
+  <button type="button" id="clearHistoryBtn">Clear History</button>
+  <ul id="rollHistory"></ul>
+
+  <div class="calc-section">
+    <h2>Multi-Roll Calculator</h2>
+    <div class="calc-row">
+      <select id="calcDie">
+        <option value="d4">D4</option>
+        <option value="d6" selected>D6</option>
+        <option value="d10">D10</option>
+        <option value="d20">D20</option>
+      </select>
+      <input type="number" id="calcQty" min="1" max="10" value="2">
+      <select id="calcOp">
+        <option value="add">Add (+)</option>
+        <option value="subtract">Subtract (−)</option>
+        <option value="multiply">Multiply (×)</option>
+        <option value="divide">Divide (÷)</option>
+        <option value="average">Average</option>
+      </select>
+      <button type="button" id="calcRollBtn">Roll &amp; Calculate</button>
+    </div>
+    <div id="calcBreakdown"></div>
+    <div id="calcResult"></div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const rollResult = document.getElementById('rollResult');
+    const rollLabel = document.getElementById('rollLabel');
+    const rollHistory = document.getElementById('rollHistory');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+    const LABELS = { coin: 'Coin', d4: 'D4', d6: 'D6', d10: 'D10', d20: 'D20' };
+    const OP_LABELS = { add: 'Add', subtract: 'Subtract', multiply: 'Multiply', divide: 'Divide', average: 'Average' };
+    const OP_SYMBOLS = { add: '+', subtract: '−', multiply: '×', divide: '÷' };
+    let history = [];
+
+    // Uses crypto.getRandomValues (rejection-sampled for an unbiased range)
+    // instead of Math.random(), so each roll comes from the browser's CSPRNG.
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function roll(type) {
+      if (type === 'coin') return secureRandomInt(2) === 0 ? 'Heads' : 'Tails';
+      const sides = parseInt(type.slice(1), 10);
+      return secureRandomInt(sides) + 1;
+    }
+
+    function combine(op, nums) {
+      if (op === 'add') return nums.reduce((a, b) => a + b, 0);
+      if (op === 'subtract') return nums.reduce((a, b) => a - b);
+      if (op === 'multiply') return nums.reduce((a, b) => a * b, 1);
+      if (op === 'divide') return nums.reduce((a, b) => a / b);
+      if (op === 'average') return nums.reduce((a, b) => a + b, 0) / nums.length;
+      return nums[0];
+    }
+
+    function roundDisplay(n) {
+      return Math.round(n * 10000) / 10000;
+    }
+
+    function renderHistory() {
+      rollHistory.innerHTML = history.slice(0, 20).map(entry => `
+        <li><span>${entry.label}</span><span>${entry.result}</span></li>
+      `).join('');
+    }
+
+    document.querySelectorAll('.dice-buttons button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.type;
+        const result = roll(type);
+        rollResult.textContent = result;
+        rollLabel.textContent = LABELS[type];
+        history.unshift({ label: LABELS[type], result });
+        renderHistory();
+      });
+    });
+
+    clearHistoryBtn.addEventListener('click', () => {
+      history = [];
+      renderHistory();
+    });
+
+    const calcDie = document.getElementById('calcDie');
+    const calcQty = document.getElementById('calcQty');
+    const calcOp = document.getElementById('calcOp');
+    const calcRollBtn = document.getElementById('calcRollBtn');
+    const calcBreakdown = document.getElementById('calcBreakdown');
+    const calcResult = document.getElementById('calcResult');
+
+    calcRollBtn.addEventListener('click', () => {
+      const dieType = calcDie.value;
+      const op = calcOp.value;
+      const qty = Math.max(1, Math.min(10, parseInt(calcQty.value, 10) || 1));
+      calcQty.value = qty;
+
+      const rolls = Array.from({ length: qty }, () => roll(dieType));
+      const result = roundDisplay(combine(op, rolls));
+      const symbol = OP_SYMBOLS[op];
+
+      calcBreakdown.textContent = qty === 1
+        ? `Rolled: ${rolls[0]}`
+        : `Rolls: ${rolls.join(symbol ? ` ${symbol} ` : ', ')}`;
+      calcResult.textContent = result;
+
+      const label = `${qty}×${LABELS[dieType]} (${OP_LABELS[op]})`;
+      history.unshift({ label, result });
+      renderHistory();
+    });
+  </script>
+</body>
+</html>

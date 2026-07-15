@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Color Picker</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+  h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 28px 0 12px;
+  }
+
+  .picker-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 500px;
+  }
+  #colorPicker {
+    width: 64px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: none;
+    cursor: pointer;
+  }
+  #hexInput {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Consolas', monospace;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  #hexInput:focus {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  .value-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
+    max-width: 500px;
+  }
+  .value-chip {
+    flex: 1;
+    min-width: 130px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-family: 'Consolas', monospace;
+    font-size: 13px;
+    transition: border-color 0.15s ease;
+  }
+  .value-chip:hover { border-color: var(--accent-bg); }
+  .value-chip .label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .swatch-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .swatch {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 4px;
+    box-sizing: border-box;
+  }
+  .swatch span {
+    font-family: 'Consolas', monospace;
+    font-size: 9px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+
+  .copied-flash {
+    outline: 2px solid var(--accent-bg) !important;
+  }
+</style>
+</head>
+<body>
+  <h1>Color Picker</h1>
+  <p class="sub">Pick a color, copy its values, and grab a generated palette. Click any value or swatch to copy it.</p>
+
+  <div class="picker-row">
+    <input type="color" id="colorPicker" value="#cc0000">
+    <input type="text" id="hexInput" value="#cc0000" autocomplete="off" spellcheck="false">
+  </div>
+
+  <div class="value-grid" id="valueGrid"></div>
+
+  <h2>Shades &amp; Tints</h2>
+  <div class="swatch-row" id="shadesRow"></div>
+
+  <h2>Harmony</h2>
+  <div class="swatch-row" id="harmonyRow"></div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const colorPicker = document.getElementById('colorPicker');
+    const hexInput = document.getElementById('hexInput');
+    const valueGrid = document.getElementById('valueGrid');
+    const shadesRow = document.getElementById('shadesRow');
+    const harmonyRow = document.getElementById('harmonyRow');
+
+    function hexToRgb(hex) {
+      const clean = hex.replace('#', '');
+      const bigint = parseInt(clean, 16);
+      return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+    }
+
+    function rgbToHex(r, g, b) {
+      return '#' + [r, g, b].map(x => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('');
+    }
+
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+      if (max === min) { h = s = 0; }
+      else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          default: h = (r - g) / d + 4;
+        }
+        h /= 6;
+      }
+      return { h: h * 360, s: s * 100, l: l * 100 };
+    }
+
+    function hslToRgb(h, s, l) {
+      h /= 360; s /= 100; l /= 100;
+      let r, g, b;
+      if (s === 0) { r = g = b = l; }
+      else {
+        const hue2rgb = (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1 / 6) return p + (q - p) * 6 * t;
+          if (t < 1 / 2) return q;
+          if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+          return p;
+        };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1 / 3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1 / 3);
+      }
+      return { r: r * 255, g: g * 255, b: b * 255 };
+    }
+
+    function copyToClipboard(text, el) {
+      navigator.clipboard.writeText(text).then(() => {
+        if (el) {
+          el.classList.add('copied-flash');
+          setTimeout(() => el.classList.remove('copied-flash'), 400);
+        }
+      });
+    }
+
+    function renderValues(hex) {
+      const { r, g, b } = hexToRgb(hex);
+      const { h, s, l } = rgbToHsl(r, g, b);
+      const rgbStr = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+      const hslStr = `hsl(${Math.round(h)}, ${Math.round(s)}%, ${Math.round(l)}%)`;
+
+      valueGrid.innerHTML = `
+        <div class="value-chip" data-copy="${hex}"><span class="label">Hex</span>${hex}</div>
+        <div class="value-chip" data-copy="${rgbStr}"><span class="label">RGB</span>${rgbStr}</div>
+        <div class="value-chip" data-copy="${hslStr}"><span class="label">HSL</span>${hslStr}</div>
+      `;
+      valueGrid.querySelectorAll('.value-chip').forEach(chip => {
+        chip.addEventListener('click', () => copyToClipboard(chip.dataset.copy, chip));
+      });
+    }
+
+    function renderShades(hex) {
+      const { r, g, b } = hexToRgb(hex);
+      const { h, s } = rgbToHsl(r, g, b);
+      const lightnesses = [10, 20, 30, 40, 50, 60, 70, 80, 90];
+      shadesRow.innerHTML = lightnesses.map(l => {
+        const rgb = hslToRgb(h, s, l);
+        const swatchHex = rgbToHex(rgb.r, rgb.g, rgb.b);
+        const textColor = l > 55 ? '#000' : '#fff';
+        return `<div class="swatch" style="background:${swatchHex}" data-copy="${swatchHex}"><span style="color:${textColor}; background:transparent;">${swatchHex}</span></div>`;
+      }).join('');
+      shadesRow.querySelectorAll('.swatch').forEach(sw => {
+        sw.addEventListener('click', () => copyToClipboard(sw.dataset.copy, sw));
+      });
+    }
+
+    function renderHarmony(hex) {
+      const { r, g, b } = hexToRgb(hex);
+      const { h, s, l } = rgbToHsl(r, g, b);
+      const rotate = deg => {
+        const newH = (h + deg + 360) % 360;
+        const rgb = hslToRgb(newH, s, l);
+        return rgbToHex(rgb.r, rgb.g, rgb.b);
+      };
+      const swatches = [
+        { label: 'Complementary', hex: rotate(180) },
+        { label: 'Analogous +30', hex: rotate(30) },
+        { label: 'Analogous -30', hex: rotate(-30) },
+        { label: 'Triadic +120', hex: rotate(120) },
+        { label: 'Triadic -120', hex: rotate(-120) },
+      ];
+      harmonyRow.innerHTML = swatches.map(sw => `
+        <div class="swatch" style="background:${sw.hex}" data-copy="${sw.hex}" title="${sw.label}"><span>${sw.hex}</span></div>
+      `).join('');
+      harmonyRow.querySelectorAll('.swatch').forEach(sw => {
+        sw.addEventListener('click', () => copyToClipboard(sw.dataset.copy, sw));
+      });
+    }
+
+    function updateAll(hex) {
+      renderValues(hex);
+      renderShades(hex);
+      renderHarmony(hex);
+    }
+
+    colorPicker.addEventListener('input', () => {
+      hexInput.value = colorPicker.value;
+      updateAll(colorPicker.value);
+    });
+
+    hexInput.addEventListener('input', () => {
+      const val = hexInput.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+        colorPicker.value = val;
+        updateAll(val);
+      }
+    });
+
+    updateAll(colorPicker.value);
+  </script>
+</body>
+</html>

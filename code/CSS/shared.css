@@ -1,0 +1,330 @@
+:root {
+  color-scheme: dark;
+
+  --bg: #200a0a;
+  --text: #ffffff;
+  --text-muted: rgba(255, 255, 255, 0.7);
+  --border: rgba(255, 255, 255, 0.2);
+  --border-strong: rgba(255, 255, 255, 0.35);
+  --surface: rgba(255, 255, 255, 0.08);
+  --surface-alt: rgba(255, 255, 255, 0.06);
+  --card-bg: rgba(255, 255, 255, 0.08);
+  --skeleton-a: rgba(255, 255, 255, 0.06);
+  --skeleton-b: rgba(255, 255, 255, 0.14);
+  --accent-bg: #e64848;
+  --accent-dark: #682020;
+  --accent-text: #0b0b0f;
+  --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.3);
+
+  --tag-bg-s: 60%;
+  --tag-bg-l: 30%;
+  --tag-border-l: 48%;
+  --tag-text-l: 92%;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 14px 28px rgba(0, 0, 0, 0.45);
+}
+
+* { box-sizing: border-box; }
+
+/* Every page here is a full reload (no client-side routing), so this softens
+   the abrupt cut between pages a little. Kept short and on opacity only —
+   long or layout-affecting transitions would make navigation feel sluggish. */
+body { animation: pageFadeIn 0.25s ease; }
+@keyframes pageFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Settings > Appearance > Reduce motion. A blanket override rather than
+   touching every individual animation across every page — simpler and
+   guaranteed not to miss one. */
+body.reduce-motion,
+body.reduce-motion * {
+  animation-duration: 0.001s !important;
+  animation-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001s !important;
+}
+
+/* Theme background scene (sidebar.js's applySiteBackground), painted on its
+   own layer instead of directly on body so it can be blurred without also
+   blurring real page content — filter: blur() on body would blur its
+   children too. Fixed + oversized via the negative inset (rather than
+   exactly 100vw/100vh) so the blur's own edge softening bleeds past the
+   viewport edge instead of leaving a visible fade line at the border.
+   z-index: -1 sits it behind body's content the same way .hero-glow already
+   does elsewhere on index.html. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -20px;
+  z-index: -1;
+  background-image: var(--site-bg-image, none);
+  background-size: cover;
+  background-position: center;
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.sidebar-zone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 40px;
+  z-index: 9;
+}
+.sidebar-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: fit-content;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 24px 20px;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--bg) 55%, black);
+  border-right: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md);
+  transform: translateX(calc(-100% + 16px));
+  transition: transform 0.3s ease;
+}
+.sidebar-zone:hover .sidebar-panel {
+  transform: translateX(0);
+}
+.sidebar-logo {
+  display: block;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo img {
+  display: block;
+  width: 130px;
+  height: auto;
+  animation: sidebarLogoPulse 2.5s ease-in-out infinite;
+}
+@keyframes sidebarLogoPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+.sidebar-search-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 6px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-sm);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.sidebar-search-btn:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+.sidebar-search-btn i {
+  width: 18px;
+  font-size: 14px;
+  text-align: center;
+}
+.sidebar-search-btn kbd {
+  margin-left: auto;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: inherit;
+}
+
+.site-search-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2147483647;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+}
+.site-search-overlay[hidden] { display: none; }
+.site-search-box {
+  width: 480px;
+  max-width: 100%;
+  background: color-mix(in srgb, var(--bg) 25%, black);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.site-search-box input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 18px;
+  font-size: 16px;
+  font-family: inherit;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  outline: none;
+}
+.site-search-results {
+  max-height: 320px;
+  overflow-y: auto;
+}
+.site-search-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  cursor: pointer;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+}
+.site-search-result i {
+  width: 18px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.site-search-context {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.site-search-result:hover,
+.site-search-result.active {
+  background: var(--surface-alt);
+}
+.site-search-empty {
+  padding: 16px 18px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.shortcuts-list { display: flex; flex-direction: column; gap: 10px; }
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+}
+.shortcuts-desc { color: var(--text-muted); }
+.shortcuts-row kbd {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+.sidebar-link:hover {
+  background: var(--surface-alt);
+}
+.sidebar-link.active {
+  color: var(--accent-bg);
+}
+.sidebar-link i {
+  width: 18px;
+  font-size: 16px;
+  text-align: center;
+}
+.sidebar-link-badge {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-bg);
+  margin-left: auto;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px var(--accent-bg);
+}
+.sidebar-accordion { display: flex; flex-direction: column; }
+.sidebar-accordion-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  justify-content: flex-start;
+}
+.sidebar-accordion-chevron {
+  margin-left: auto;
+  font-size: 11px !important;
+  width: auto !important;
+  transition: transform 0.25s ease;
+}
+.sidebar-accordion-toggle.open .sidebar-accordion-chevron {
+  transform: rotate(180deg);
+}
+.sidebar-accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 8px;
+}
+.sidebar-accordion-content.open {
+  max-height: 300px;
+}
+.sidebar-secondary {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.sidebar-link-subtle {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.sidebar-link-subtle:hover {
+  color: var(--text);
+}
+.sidebar-link-subtle i {
+  font-size: 13px;
+}
+.sidebar-chevron {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 14px;
+  transition: transform 0.3s ease;
+}
+.sidebar-zone:hover .sidebar-chevron {
+  transform: translateY(-50%) rotate(180deg);
+}

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tier List</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  :root {
+    --bg: #1c1c1c;
+  }
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 20px; }
+
+  .top-section {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 24px clamp(16px, 4vw, 48px) 12px;
+    box-sizing: border-box;
+  }
+
+  .tierlist-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .tierlist-controls input {
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .tierlist-controls input:focus {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+  #newItemName { width: 160px; }
+  #newItemImage { width: 200px; }
+  #newItemDesc { width: 220px; }
+
+  .tierlist-controls button {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+  }
+  #addItemBtn { background: var(--accent-bg); color: var(--accent-text); }
+  #addTierBtn, #resetBtn { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border-strong) !important; }
+
+  #tierRows { margin-bottom: 8px; }
+
+  .tier-row {
+    display: flex;
+    min-height: 76px;
+    border: 1px solid var(--border);
+    margin-bottom: 4px;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .tier-label-wrap {
+    width: 88px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .tier-label {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 18px;
+    color: #fff;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+    box-sizing: border-box;
+    padding: 4px;
+    text-align: center;
+    outline: none;
+    cursor: text;
+  }
+  .tier-remove-btn {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tier-items {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 10px;
+    padding: 10px;
+    background: var(--surface-alt);
+    min-height: 44px;
+  }
+  .tier-items.drag-over {
+    background: var(--surface);
+    outline: 2px dashed var(--accent-bg);
+    outline-offset: -2px;
+  }
+  #addTierRow { margin-bottom: 20px; }
+
+  .tier-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 76px;
+    cursor: grab;
+  }
+  .tier-item:active { cursor: grabbing; }
+  .tier-item-visual {
+    position: relative;
+    width: 64px;
+    height: 64px;
+  }
+  .tier-item-img, .tier-item-fallback {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border-strong);
+    box-sizing: border-box;
+    display: block;
+  }
+  .tier-item-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 22px;
+  }
+  .tier-item-name {
+    font-size: 11px;
+    margin-top: 4px;
+    max-width: 76px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .tier-item-remove {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tier-item-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    background: #000;
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    line-height: 1.4;
+    white-space: normal;
+    width: 160px;
+    text-align: center;
+    z-index: 20;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+    box-shadow: var(--shadow-md);
+  }
+  .tier-item-visual:hover .tier-item-tooltip {
+    visibility: visible;
+    opacity: 1;
+  }
+
+  .bottom-section {
+    flex: none;
+    height: 22vh;
+    display: flex;
+    flex-direction: column;
+    border-top: 2px solid var(--border-strong);
+    padding: 16px clamp(16px, 4vw, 48px);
+    box-sizing: border-box;
+    background: var(--surface-alt);
+  }
+  .unranked-title {
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+  .unranked-items {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 12px;
+  }
+</style>
+</head>
+<body>
+  <div class="top-section">
+    <h1>Tier List</h1>
+    <p class="sub">Add items, drag them into tiers, and edit tier names by clicking them. Saved automatically.</p>
+
+    <div class="tierlist-controls">
+      <input type="text" id="newItemName" placeholder="Item name..." autocomplete="off">
+      <input type="text" id="newItemImage" placeholder="Image URL (optional)..." autocomplete="off">
+      <input type="text" id="newItemDesc" placeholder="Description (optional)..." autocomplete="off">
+      <button type="button" id="addItemBtn">Add Item</button>
+      <button type="button" id="addTierBtn">+ Tier</button>
+      <button type="button" id="resetBtn">Reset All</button>
+    </div>
+
+    <div id="tierRows"></div>
+  </div>
+
+  <div class="bottom-section">
+    <div class="unranked-title">Unranked</div>
+    <div class="unranked-items" data-tier="unranked" id="unrankedItems"></div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const ITEMS_KEY = 'tierlist_items';
+    const TIERS_KEY = 'tierlist_tiers';
+    const DEFAULT_TIERS = [
+      { id: 's', label: 'S', color: '#e63946' },
+      { id: 'a', label: 'A', color: '#f3722c' },
+      { id: 'b', label: 'B', color: '#f9c74f' },
+      { id: 'c', label: 'C', color: '#90be6d' },
+      { id: 'd', label: 'D', color: '#4d96ff' },
+      { id: 'f', label: 'F', color: '#6c757d' },
+    ];
+    const PALETTE = ['#e63946', '#f3722c', '#f9c74f', '#90be6d', '#4d96ff', '#6c757d', '#9c6644', '#c77dff', '#43aa8b', '#f94144'];
+
+    const tierRows = document.getElementById('tierRows');
+    const unrankedItems = document.getElementById('unrankedItems');
+    const newItemName = document.getElementById('newItemName');
+    const newItemImage = document.getElementById('newItemImage');
+    const newItemDesc = document.getElementById('newItemDesc');
+    const addItemBtn = document.getElementById('addItemBtn');
+    const addTierBtn = document.getElementById('addTierBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let items = loadItems();
+    let tiers = loadTiers();
+
+    function loadItems() {
+      try { return JSON.parse(localStorage.getItem(ITEMS_KEY) || '[]'); }
+      catch { return []; }
+    }
+    function saveItems() {
+      localStorage.setItem(ITEMS_KEY, JSON.stringify(items));
+    }
+
+    function loadTiers() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(TIERS_KEY));
+        if (Array.isArray(saved) && saved.length) return saved;
+      } catch {}
+      return DEFAULT_TIERS.map(t => ({ ...t }));
+    }
+    function saveTiers() {
+      localStorage.setItem(TIERS_KEY, JSON.stringify(tiers));
+    }
+
+    function addItem(label, image, description) {
+      items.push({
+        id: 'item-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        label, image: image || '', description: description || '', tier: 'unranked',
+      });
+      saveItems();
+      render();
+    }
+
+    function removeItem(id) {
+      items = items.filter(i => i.id !== id);
+      saveItems();
+      render();
+    }
+
+    function moveItem(id, tier) {
+      const item = items.find(i => i.id === id);
+      if (item) { item.tier = tier; saveItems(); render(); }
+    }
+
+    function addTier() {
+      const color = PALETTE[tiers.length % PALETTE.length];
+      tiers.push({ id: 'tier-' + Date.now(), label: 'New', color });
+      saveTiers();
+      render();
+    }
+
+    function removeTier(id) {
+      if (!confirm('Remove this tier? Its items will move to Unranked.')) return;
+      tiers = tiers.filter(t => t.id !== id);
+      items.forEach(i => { if (i.tier === id) i.tier = 'unranked'; });
+      saveTiers();
+      saveItems();
+      render();
+    }
+
+    function renameTier(id, label) {
+      const tier = tiers.find(t => t.id === id);
+      if (tier) { tier.label = label; saveTiers(); }
+    }
+
+    function renderItem(item) {
+      const initial = (item.label.trim().charAt(0) || '?').toUpperCase();
+      const visual = item.image
+        ? `<img src="${item.image}" alt="${item.label}" class="tier-item-img" loading="lazy" width="64" height="64">`
+        : `<div class="tier-item-fallback">${initial}</div>`;
+      return `
+        <div class="tier-item" draggable="true" data-id="${item.id}">
+          <div class="tier-item-visual">
+            ${visual}
+            <button class="tier-item-remove" data-id="${item.id}" title="Remove">&times;</button>
+            ${item.description ? `<div class="tier-item-tooltip">${item.description}</div>` : ''}
+          </div>
+          <div class="tier-item-name">${item.label}</div>
+        </div>
+      `;
+    }
+
+    function renderTierRow(tier) {
+      const rowItems = items.filter(i => i.tier === tier.id);
+      return `
+        <div class="tier-row">
+          <div class="tier-label-wrap" style="background:${tier.color}">
+            <div class="tier-label" contenteditable="true" data-tier-id="${tier.id}">${tier.label}</div>
+            <button class="tier-remove-btn" data-tier-id="${tier.id}" title="Remove tier">&times;</button>
+          </div>
+          <div class="tier-items" data-tier="${tier.id}">
+            ${rowItems.map(renderItem).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function render() {
+      tierRows.innerHTML = tiers.map(renderTierRow).join('');
+      unrankedItems.innerHTML = items.filter(i => i.tier === 'unranked').map(renderItem).join('');
+      attachHandlers();
+    }
+
+    function attachHandlers() {
+      document.querySelectorAll('.tier-item').forEach(el => {
+        el.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', el.dataset.id);
+        });
+      });
+      document.querySelectorAll('.tier-item-remove').forEach(el => {
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          removeItem(el.dataset.id);
+        });
+      });
+      document.querySelectorAll('.tier-items, .unranked-items').forEach(zone => {
+        zone.addEventListener('dragover', e => {
+          e.preventDefault();
+          zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+        zone.addEventListener('drop', e => {
+          e.preventDefault();
+          zone.classList.remove('drag-over');
+          const id = e.dataTransfer.getData('text/plain');
+          moveItem(id, zone.dataset.tier);
+        });
+      });
+      document.querySelectorAll('.tier-label').forEach(el => {
+        el.addEventListener('blur', () => {
+          renameTier(el.dataset.tierId, el.textContent.trim() || 'New');
+        });
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+        });
+      });
+      document.querySelectorAll('.tier-remove-btn').forEach(el => {
+        el.addEventListener('click', e => {
+          e.stopPropagation();
+          removeTier(el.dataset.tierId);
+        });
+      });
+    }
+
+    addItemBtn.addEventListener('click', () => {
+      const label = newItemName.value.trim();
+      if (!label) return;
+      addItem(label, newItemImage.value.trim(), newItemDesc.value.trim());
+      newItemName.value = '';
+      newItemImage.value = '';
+      newItemDesc.value = '';
+      newItemName.focus();
+    });
+    [newItemName, newItemImage, newItemDesc].forEach(input => {
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') addItemBtn.click(); });
+    });
+
+    addTierBtn.addEventListener('click', addTier);
+
+    resetBtn.addEventListener('click', () => {
+      if (!confirm('Clear the entire tier list (items and tiers)?')) return;
+      items = [];
+      tiers = DEFAULT_TIERS.map(t => ({ ...t }));
+      saveItems();
+      saveTiers();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

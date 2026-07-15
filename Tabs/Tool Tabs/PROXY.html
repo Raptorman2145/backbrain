@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Proxy</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  .tab-strip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px clamp(16px, 4vw, 48px) 0;
+    background: var(--surface-alt);
+    overflow-x: auto;
+  }
+  .tab-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-bottom: none;
+    font-size: 12px;
+    white-space: nowrap;
+    max-width: 160px;
+    flex-shrink: 0;
+  }
+  .tab-chip.active {
+    background: var(--bg);
+    border-color: var(--accent-bg);
+  }
+  .tab-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .tab-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+  }
+  .tab-close:hover { color: var(--text); }
+  #newTabBtn {
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px clamp(16px, 4vw, 48px);
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+  .toolbar button {
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .toolbar button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  #goBtn {
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    border: none;
+    font-weight: 600;
+  }
+  #addressBar {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  #addressBar:focus {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  .bookmarks-panel {
+    padding: 10px clamp(16px, 4vw, 48px);
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .bookmark-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .bookmark-row:last-child { border-bottom: none; }
+  .bookmark-label {
+    cursor: pointer;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bookmark-label:hover { color: var(--accent-bg); }
+  .bookmark-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .bookmark-delete:hover { color: var(--accent-bg); }
+  .bookmark-empty {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .history-panel {
+    padding: 10px clamp(16px, 4vw, 48px);
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .history-header h3 {
+    margin: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  #clearHistoryBtn {
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+  }
+  #clearHistoryBtn:hover { color: var(--accent-bg); }
+  .history-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    gap: 10px;
+  }
+  .history-row:last-child { border-bottom: none; }
+  .history-main {
+    overflow: hidden;
+    cursor: pointer;
+    flex: 1;
+  }
+  .history-main:hover .history-title { color: var(--accent-bg); }
+  .history-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .history-delete:hover { color: var(--accent-bg); }
+  .history-empty {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 0;
+  }
+
+  .proxy-note {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 8px clamp(16px, 4vw, 48px);
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+    margin: 0;
+  }
+
+  .frame-area {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
+  .proxy-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+  }
+  #emptyState {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    background: var(--surface);
+  }
+</style>
+</head>
+<body>
+  <div class="tab-strip" id="tabStrip">
+    <button id="newTabBtn" title="New tab">+</button>
+  </div>
+
+  <div class="toolbar">
+    <button id="backBtn" title="Back" disabled><i class="fa-solid fa-arrow-left"></i></button>
+    <button id="forwardBtn" title="Forward" disabled><i class="fa-solid fa-arrow-right"></i></button>
+    <button id="reloadBtn" title="Reload"><i class="fa-solid fa-rotate-right"></i></button>
+    <button id="homeBtn" title="Home"><i class="fa-solid fa-house"></i></button>
+    <input type="text" id="addressBar" placeholder="Enter a URL or search term..." autocomplete="off">
+    <button id="goBtn">Go</button>
+    <button id="bookmarkBtn" title="Bookmark this page"><i class="fa-solid fa-star"></i></button>
+    <button id="bookmarksToggle" title="Bookmarks"><i class="fa-solid fa-bars"></i></button>
+    <button id="historyToggle" title="History"><i class="fa-solid fa-clock-rotate-left"></i></button>
+  </div>
+
+  <div class="bookmarks-panel" id="bookmarksPanel" hidden>
+    <div id="bookmarksList"></div>
+  </div>
+
+  <div class="history-panel" id="historyPanel" hidden>
+    <div class="history-header">
+      <h3>History</h3>
+      <button id="clearHistoryBtn">Clear History</button>
+    </div>
+    <div id="historyList"></div>
+  </div>
+
+  <p class="proxy-note">Some sites refuse to be shown inside a frame (their own security setting) and won't load here — this doesn't bypass network-level blocks either way. Back/Forward/Bookmarks only track pages loaded through this address bar; links clicked inside an already-loaded site can't be seen from outside the frame, so they won't show up here.</p>
+
+  <div class="frame-area" id="frameArea">
+    <div id="emptyState">Enter a URL above to load it here.</div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const BOOKMARKS_KEY = 'proxy_bookmarks';
+    const HISTORY_KEY = 'proxy_history';
+    const HISTORY_LIMIT = 200;
+
+    const tabStrip = document.getElementById('tabStrip');
+    const newTabBtn = document.getElementById('newTabBtn');
+    const backBtn = document.getElementById('backBtn');
+    const forwardBtn = document.getElementById('forwardBtn');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const homeBtn = document.getElementById('homeBtn');
+    const addressBar = document.getElementById('addressBar');
+    const goBtn = document.getElementById('goBtn');
+    const bookmarkBtn = document.getElementById('bookmarkBtn');
+    const bookmarksToggle = document.getElementById('bookmarksToggle');
+    const bookmarksPanel = document.getElementById('bookmarksPanel');
+    const bookmarksList = document.getElementById('bookmarksList');
+    const historyToggle = document.getElementById('historyToggle');
+    const historyPanel = document.getElementById('historyPanel');
+    const historyList = document.getElementById('historyList');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const frameArea = document.getElementById('frameArea');
+    const emptyState = document.getElementById('emptyState');
+
+    let tabs = [];
+    let activeTabId = null;
+    let tabCounter = 0;
+
+    function normalizeUrl(raw) {
+      const val = raw.trim();
+      if (!val) return null;
+      if (/^https?:\/\//i.test(val)) return val;
+      if (val.includes('.') && !val.includes(' ')) return 'https://' + val;
+      return 'https://duckduckgo.com/?q=' + encodeURIComponent(val);
+    }
+
+    function deriveTitle(url) {
+      try { return new URL(url).hostname.replace(/^www\./, ''); }
+      catch { return url; }
+    }
+
+    function getTab(id) {
+      return tabs.find(t => t.id === id);
+    }
+
+    function getActiveTab() {
+      return getTab(activeTabId);
+    }
+
+    function createTab() {
+      const id = ++tabCounter;
+      tabs.push({ id, history: [], historyIndex: -1, frameEl: null, title: 'New Tab' });
+      activateTab(id);
+    }
+
+    function closeTab(id) {
+      const idx = tabs.findIndex(t => t.id === id);
+      if (idx === -1) return;
+      const tab = tabs[idx];
+      if (tab.frameEl) tab.frameEl.remove();
+      tabs.splice(idx, 1);
+      if (tabs.length === 0) {
+        createTab();
+        return;
+      }
+      if (activeTabId === id) {
+        const next = tabs[idx] || tabs[idx - 1];
+        activateTab(next.id);
+      } else {
+        renderTabs();
+      }
+    }
+
+    function activateTab(id) {
+      activeTabId = id;
+      tabs.forEach(t => { if (t.frameEl) t.frameEl.hidden = t.id !== id; });
+      const tab = getActiveTab();
+      emptyState.hidden = !!tab.frameEl;
+      addressBar.value = tab.historyIndex >= 0 ? tab.history[tab.historyIndex] : '';
+      updateNavButtons();
+      renderTabs();
+    }
+
+    function updateNavButtons() {
+      const tab = getActiveTab();
+      backBtn.disabled = !tab || tab.historyIndex <= 0;
+      forwardBtn.disabled = !tab || tab.historyIndex >= tab.history.length - 1;
+    }
+
+    function ensureFrame(tab) {
+      if (tab.frameEl) return tab.frameEl;
+      const frame = document.createElement('iframe');
+      frame.title = 'Proxied site';
+      frame.className = 'proxy-frame';
+      frameArea.appendChild(frame);
+      tab.frameEl = frame;
+      return frame;
+    }
+
+    function navigate(url, { record = true } = {}) {
+      const tab = getActiveTab();
+      if (!tab) return;
+      const frame = ensureFrame(tab);
+      frame.src = url;
+      frame.hidden = false;
+      emptyState.hidden = true;
+      if (record) {
+        tab.history = tab.history.slice(0, tab.historyIndex + 1);
+        tab.history.push(url);
+        tab.historyIndex = tab.history.length - 1;
+        addHistoryEntry(url);
+      }
+      tab.title = deriveTitle(url);
+      addressBar.value = url;
+      updateNavButtons();
+      renderTabs();
+    }
+
+    function goBack() {
+      const tab = getActiveTab();
+      if (!tab || tab.historyIndex <= 0) return;
+      tab.historyIndex--;
+      navigate(tab.history[tab.historyIndex], { record: false });
+    }
+
+    function goForward() {
+      const tab = getActiveTab();
+      if (!tab || tab.historyIndex >= tab.history.length - 1) return;
+      tab.historyIndex++;
+      navigate(tab.history[tab.historyIndex], { record: false });
+    }
+
+    function reload() {
+      const tab = getActiveTab();
+      if (!tab || !tab.frameEl || tab.historyIndex < 0) return;
+      const url = tab.history[tab.historyIndex];
+      tab.frameEl.src = '';
+      requestAnimationFrame(() => { tab.frameEl.src = url; });
+    }
+
+    function goHome() {
+      const tab = getActiveTab();
+      if (!tab) return;
+      if (tab.frameEl) {
+        tab.frameEl.remove();
+        tab.frameEl = null;
+      }
+      tab.history = [];
+      tab.historyIndex = -1;
+      tab.title = 'New Tab';
+      addressBar.value = '';
+      emptyState.hidden = false;
+      updateNavButtons();
+      renderTabs();
+    }
+
+    function renderTabs() {
+      tabStrip.querySelectorAll('.tab-chip').forEach(el => el.remove());
+      tabs.forEach(tab => {
+        const chip = document.createElement('div');
+        chip.className = 'tab-chip' + (tab.id === activeTabId ? ' active' : '');
+        chip.innerHTML = `<span class="tab-label">${tab.title}</span><button class="tab-close" title="Close tab">&times;</button>`;
+        chip.querySelector('.tab-label').addEventListener('click', () => activateTab(tab.id));
+        chip.querySelector('.tab-close').addEventListener('click', e => { e.stopPropagation(); closeTab(tab.id); });
+        tabStrip.insertBefore(chip, newTabBtn);
+      });
+    }
+
+    function loadBookmarks() {
+      try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || '[]'); }
+      catch { return []; }
+    }
+
+    function saveBookmarks(list) {
+      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(list));
+    }
+
+    function renderBookmarks() {
+      const list = loadBookmarks();
+      bookmarksList.innerHTML = list.length
+        ? list.map((b, i) => `
+            <div class="bookmark-row">
+              <span class="bookmark-label" data-index="${i}">${b.title}</span>
+              <button class="bookmark-delete" data-index="${i}" title="Delete">&times;</button>
+            </div>
+          `).join('')
+        : '<p class="bookmark-empty">No bookmarks yet.</p>';
+
+      bookmarksList.querySelectorAll('.bookmark-label').forEach(el => {
+        el.addEventListener('click', () => {
+          const list = loadBookmarks();
+          const bm = list[Number(el.dataset.index)];
+          if (bm) navigate(bm.url);
+          bookmarksPanel.hidden = true;
+        });
+      });
+      bookmarksList.querySelectorAll('.bookmark-delete').forEach(el => {
+        el.addEventListener('click', () => {
+          const list = loadBookmarks();
+          list.splice(Number(el.dataset.index), 1);
+          saveBookmarks(list);
+          renderBookmarks();
+        });
+      });
+    }
+
+    function loadHistory() {
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+      catch { return []; }
+    }
+
+    function saveHistory(list) {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+    }
+
+    function addHistoryEntry(url) {
+      const list = loadHistory();
+      list.unshift({ title: deriveTitle(url), url, visitedAt: Date.now() });
+      if (list.length > HISTORY_LIMIT) list.length = HISTORY_LIMIT;
+      saveHistory(list);
+      if (!historyPanel.hidden) renderHistory();
+    }
+
+    function renderHistory() {
+      const list = loadHistory();
+      historyList.innerHTML = list.length
+        ? list.map((h, i) => `
+            <div class="history-row">
+              <div class="history-main" data-index="${i}">
+                <div class="history-title">${h.title}</div>
+                <div class="history-meta">${new Date(h.visitedAt).toLocaleString()}</div>
+              </div>
+              <button class="history-delete" data-index="${i}" title="Remove">&times;</button>
+            </div>
+          `).join('')
+        : '<p class="history-empty">No history yet.</p>';
+
+      historyList.querySelectorAll('.history-main').forEach(el => {
+        el.addEventListener('click', () => {
+          const list = loadHistory();
+          const h = list[Number(el.dataset.index)];
+          if (h) navigate(h.url);
+          historyPanel.hidden = true;
+        });
+      });
+      historyList.querySelectorAll('.history-delete').forEach(el => {
+        el.addEventListener('click', () => {
+          const list = loadHistory();
+          list.splice(Number(el.dataset.index), 1);
+          saveHistory(list);
+          renderHistory();
+        });
+      });
+    }
+
+    goBtn.addEventListener('click', () => {
+      const url = normalizeUrl(addressBar.value);
+      if (url) navigate(url);
+    });
+    addressBar.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const url = normalizeUrl(addressBar.value);
+        if (url) navigate(url);
+      }
+    });
+    backBtn.addEventListener('click', goBack);
+    forwardBtn.addEventListener('click', goForward);
+    homeBtn.addEventListener('click', goHome);
+    reloadBtn.addEventListener('click', reload);
+    newTabBtn.addEventListener('click', () => createTab());
+
+    bookmarkBtn.addEventListener('click', () => {
+      const tab = getActiveTab();
+      const url = tab && tab.historyIndex >= 0 ? tab.history[tab.historyIndex] : null;
+      if (!url) return;
+      const defaultTitle = deriveTitle(url);
+      const title = prompt('Bookmark title:', defaultTitle);
+      if (title === null) return;
+      const list = loadBookmarks();
+      list.push({ title: title || defaultTitle, url });
+      saveBookmarks(list);
+      renderBookmarks();
+    });
+
+    bookmarksToggle.addEventListener('click', () => {
+      historyPanel.hidden = true;
+      bookmarksPanel.hidden = !bookmarksPanel.hidden;
+      if (!bookmarksPanel.hidden) renderBookmarks();
+    });
+
+    historyToggle.addEventListener('click', () => {
+      bookmarksPanel.hidden = true;
+      historyPanel.hidden = !historyPanel.hidden;
+      if (!historyPanel.hidden) renderHistory();
+    });
+
+    clearHistoryBtn.addEventListener('click', () => {
+      if (!confirm('Clear all browsing history?')) return;
+      saveHistory([]);
+      renderHistory();
+    });
+
+    createTab();
+    renderBookmarks();
+  </script>
+</body>
+</html>

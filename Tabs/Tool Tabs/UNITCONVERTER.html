@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Unit Converter</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  select, input[type="number"] {
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  select:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  #categorySelect {
+    max-width: 220px;
+    margin-bottom: 24px;
+  }
+
+  .convert-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    max-width: 600px;
+  }
+  .convert-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    min-width: 180px;
+  }
+  .convert-field input { width: 100%; box-sizing: border-box; }
+  .convert-field select { width: 100%; box-sizing: border-box; }
+
+  #swapBtn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 20px;
+  }
+  #swapBtn:hover { border-color: var(--accent-bg); color: var(--accent-bg); }
+</style>
+</head>
+<body>
+  <h1>Unit Converter</h1>
+  <p class="sub">Pick a category, type a value in either box — the other updates automatically.</p>
+
+  <select id="categorySelect"></select>
+
+  <div class="convert-row">
+    <div class="convert-field">
+      <input type="number" id="fromValue" value="1">
+      <select id="fromUnit"></select>
+    </div>
+
+    <button id="swapBtn" title="Swap units"><i class="fa-solid fa-right-left"></i></button>
+
+    <div class="convert-field">
+      <input type="number" id="toValue">
+      <select id="toUnit"></select>
+    </div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const CATEGORIES = {
+      length: {
+        label: 'Length',
+        units: { mm: 0.001, cm: 0.01, m: 1, km: 1000, in: 0.0254, ft: 0.3048, yd: 0.9144, mi: 1609.344 },
+      },
+      mass: {
+        label: 'Weight',
+        units: { mg: 0.000001, g: 0.001, kg: 1, t: 1000, oz: 0.0283495, lb: 0.453592 },
+      },
+      volume: {
+        label: 'Volume',
+        units: { ml: 0.001, l: 1, 'fl oz': 0.0295735, cup: 0.236588, pt: 0.473176, qt: 0.946353, gal: 3.78541 },
+      },
+      speed: {
+        label: 'Speed',
+        units: { 'm/s': 1, 'km/h': 0.277778, mph: 0.44704, knot: 0.514444 },
+      },
+      temperature: {
+        label: 'Temperature',
+        special: true,
+        units: ['C', 'F', 'K'],
+      },
+    };
+
+    const categorySelect = document.getElementById('categorySelect');
+    const fromValue = document.getElementById('fromValue');
+    const fromUnit = document.getElementById('fromUnit');
+    const toValue = document.getElementById('toValue');
+    const toUnit = document.getElementById('toUnit');
+    const swapBtn = document.getElementById('swapBtn');
+
+    function tempToCelsius(value, unit) {
+      if (unit === 'C') return value;
+      if (unit === 'F') return (value - 32) * 5 / 9;
+      return value - 273.15;
+    }
+
+    function celsiusToTemp(value, unit) {
+      if (unit === 'C') return value;
+      if (unit === 'F') return value * 9 / 5 + 32;
+      return value + 273.15;
+    }
+
+    function convert(value, from, to, category) {
+      if (isNaN(value)) return '';
+      const cat = CATEGORIES[category];
+      if (cat.special) {
+        return roundNice(celsiusToTemp(tempToCelsius(value, from), to));
+      }
+      const inBase = value * cat.units[from];
+      return roundNice(inBase / cat.units[to]);
+    }
+
+    function roundNice(n) {
+      return Math.round(n * 1e6) / 1e6;
+    }
+
+    function populateUnitSelects(category) {
+      const cat = CATEGORIES[category];
+      const unitKeys = cat.special ? cat.units : Object.keys(cat.units);
+      const options = unitKeys.map(u => `<option value="${u}">${u}</option>`).join('');
+      fromUnit.innerHTML = options;
+      toUnit.innerHTML = options;
+      fromUnit.selectedIndex = 0;
+      toUnit.selectedIndex = Math.min(1, unitKeys.length - 1);
+    }
+
+    function populateCategorySelect() {
+      categorySelect.innerHTML = Object.keys(CATEGORIES)
+        .map(key => `<option value="${key}">${CATEGORIES[key].label}</option>`)
+        .join('');
+    }
+
+    function recalcFromSource() {
+      const category = categorySelect.value;
+      const result = convert(parseFloat(fromValue.value), fromUnit.value, toUnit.value, category);
+      toValue.value = result;
+    }
+
+    function recalcFromTarget() {
+      const category = categorySelect.value;
+      const result = convert(parseFloat(toValue.value), toUnit.value, fromUnit.value, category);
+      fromValue.value = result;
+    }
+
+    categorySelect.addEventListener('change', () => {
+      populateUnitSelects(categorySelect.value);
+      fromValue.value = 1;
+      recalcFromSource();
+    });
+    fromUnit.addEventListener('change', recalcFromSource);
+    toUnit.addEventListener('change', recalcFromSource);
+    fromValue.addEventListener('input', recalcFromSource);
+    toValue.addEventListener('input', recalcFromTarget);
+
+    swapBtn.addEventListener('click', () => {
+      const tempUnit = fromUnit.value;
+      fromUnit.value = toUnit.value;
+      toUnit.value = tempUnit;
+      recalcFromSource();
+    });
+
+    populateCategorySelect();
+    populateUnitSelects(categorySelect.value);
+    recalcFromSource();
+  </script>
+</body>
+</html>

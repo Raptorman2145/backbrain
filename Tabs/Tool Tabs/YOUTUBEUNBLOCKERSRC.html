@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="referrer" content="no-referrer">
+    <title>Backbrain Youtube Unblocker</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23cc0000'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f0a0a;
+            --maroon-deep: #4a0404;
+            --maroon-bright: #800000;
+            --accent-red: #cc0000;
+            --accent-orange: #ff8800;
+            --text-main: #e5e7eb;
+            --panel-bg: rgba(26, 15, 15, 0.95);
+        }
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            padding: 8rem 2rem 4rem 8rem;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            transition: background-image 0.5s ease-in-out, font-size 0.2s;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 10, 10, 0.85);
+            z-index: -1;
+        }
+        #particles-js {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        #sub-sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 5.5rem;
+            background: rgba(10, 5, 5, 0.95);
+            border-right: 1px solid var(--maroon-bright);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 5rem;
+            z-index: 150;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+        .sub-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            margin-bottom: 1.2rem;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+        }
+        .sub-icon:hover {
+            border-color: var(--accent-red);
+            transform: scale(1.1);
+            z-index: 200;
+        }
+        .sub-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 3px;
+            object-fit: cover;
+        }
+        #notif-hub {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 300px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .notif-toast {
+            background: var(--panel-bg);
+            border-left: 4px solid var(--accent-orange);
+            padding: 1rem;
+            font-family: 'JetBrains Mono';
+            border-top: 1px solid #333;
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        nav {
+            background: linear-gradient(90deg, transparent, var(--maroon-deep), transparent);
+            border-bottom: 1px solid var(--maroon-bright);
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding: 1rem;
+            text-align: center;
+            backdrop-filter: blur(12px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .nav-center { display: flex; flex-direction: column; align-items: center; }
+        .settings-trigger {
+            position: absolute;
+            right: 2rem;
+            color: #555;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .settings-trigger:hover { color: var(--accent-red); transform: rotate(45deg); }
+
+        .tab-btn {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            padding: 0.8rem 1.5rem;
+            margin: 0 5px;
+            color: #555;
+            transition: 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active {
+            color: white;
+            border-bottom: 3px solid var(--accent-red);
+            text-shadow: 0 0 10px var(--accent-red);
+        }
+        .console-header {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+        .content-container {
+            width: 100%;
+            max-width: 700px;
+        }
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid var(--accent-red);
+            border-radius: 4px;
+            width: 100%;
+        }
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        .custom-tooltip {
+            visibility: hidden;
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ff0000;
+            color: #fff;
+            text-align: center;
+            padding: 5px 10px;
+            border-radius: 2px;
+            font-family: 'JetBrains Mono';
+            font-size: 10px;
+            white-space: nowrap;
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border: 1px solid #ffffff33;
+            pointer-events: none;
+        }
+        .tooltip-container:hover .custom-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .sub-icon .custom-tooltip {
+            left: 60px;
+            top: 0;
+            bottom: auto;
+            transform: none;
+            background: #000;
+            border: 1px solid var(--maroon-bright);
+            text-align: left;
+            min-width: 200px;
+        }
+        #thumb-preview {
+            position: fixed;
+            right: 5%;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 480px;
+            height: 270px;
+            border: 2px solid var(--maroon-bright);
+            background: #000;
+            display: none;
+            z-index: 200;
+            box-shadow: 0 0 40px rgba(128, 0, 0, 0.3);
+            pointer-events: none;
+            overflow: hidden;
+            border-radius: 4px;
+        }
+        #thumb-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+        }
+        .input-box {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: #000;
+            border: 1px solid #333;
+            color: white;
+            padding: 14px;
+            outline: none;
+            width: 100%;
+        }
+        .search-sub {
+            font-size: 10px;
+            border-color: #222;
+            padding: 8px;
+            margin-bottom: 0px;
+        }
+        .btn-base {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.7rem 1rem;
+            border-radius: 2px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+        .btn-launch {
+            background-color: var(--accent-red);
+            color: white;
+            border: none;
+        }
+        .btn-action {
+            background-color: #330000;
+            color: var(--accent-red);
+            border: 1px solid var(--maroon-bright);
+            font-size: 9px;
+            height: 100%;
+        }
+        .btn-action:hover {
+            background-color: var(--accent-red);
+            color: white;
+        }
+        .btn-sub {
+            background-color: #1a1a1a;
+            color: var(--accent-orange);
+            border: 1px solid var(--maroon-bright);
+            font-size: 9px;
+            margin-top: 5px;
+        }
+        .btn-copy {
+            background-color: #1a1a1a;
+            color: #444;
+            border: 1px solid #333;
+            width: 44px; height: 44px;
+            font-size: 14px;
+        }
+        .btn-control {
+            background-color: #1a1a1a;
+            color: #666;
+            border: 1px solid #333;
+            width: 44px; height: 44px;
+        }
+        .btn-control:hover { border-color: var(--accent-red); color: white; }
+        .btn-control.active { border-color: var(--accent-orange); color: var(--accent-orange); }
+
+        .video-item {
+            background: rgba(0, 0, 0, 0.6);
+            border-left: 4px solid var(--accent-red);
+            margin-bottom: 0.75rem;
+            padding: 1rem;
+            transition: transform 0.2s;
+            cursor: crosshair;
+            position: relative;
+        }
+        .channel-item {
+            border-left: 4px solid var(--accent-orange);
+            background: linear-gradient(90deg, rgba(255,136,0,0.1), transparent);
+        }
+        .video-item:hover {
+            transform: translateX(10px);
+            border-left-color: var(--accent-orange);
+            z-index: 999;
+        }
+
+        .video-title-container {
+            position: relative;
+        }
+
+        /* FIXED: Added solid background and higher z-index to stop background bleed */
+        .video-info-hover {
+            visibility: hidden;
+            position: absolute;
+            left: 0;
+            top: 100%;
+            background: #0a0505 !important;
+            border: 1px solid var(--maroon-bright);
+            padding: 0.8rem;
+            width: 320px;
+            z-index: 2000;
+            font-family: 'JetBrains Mono';
+            font-size: 9px;
+            color: #ccc;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease-in-out;
+            box-shadow: 0 10px 40px rgba(0,0,0,1);
+        }
+
+        .video-title-container:hover .video-info-hover {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .accordion-header {
+            background: #1a1010;
+            border: 1px solid #331111;
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: 0.2s;
+            margin-top: 1rem;
+        }
+        .accordion-header:hover {
+            border-color: var(--accent-red);
+        }
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+            background: rgba(0,0,0,0.3);
+        }
+        .accordion-content.open {
+            max-height: 1000px;
+            overflow-y: auto;
+            border: 1px solid #221111;
+            border-top: none;
+            padding: 10px;
+        }
+
+        .state-finished { opacity: 0.4; filter: grayscale(1); border-left-color: #333; }
+        .hidden-node { display: none !important; }
+        .hidden-tab { display: none !important; }
+        .meta-tag {
+            font-family: 'JetBrains Mono';
+            font-size: 8px;
+            color: #666;
+            background: #000;
+            padding: 2px 4px;
+            border: 1px solid #222;
+            margin-right: 4px;
+        }
+        .sort-btn {
+            font-size: 8px;
+            color: #444;
+            padding: 2px 6px;
+            border: 1px solid #222;
+            margin-right: 5px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .sort-btn:hover { border-color: var(--accent-red); color: white; }
+        .sort-btn.active { color: var(--accent-orange); border-color: var(--accent-orange); }
+
+        #launch-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono';
+            color: var(--accent-red);
+        }
+
+        #playlist-modal, #autoplay-modal, #settings-modal {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: #1a0f0f;
+            border: 1px solid var(--maroon-bright);
+            padding: 2rem;
+            width: 350px;
+            border-radius: 4px;
+        }
+        /* Settings Elements */
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-family: 'JetBrains Mono';
+            font-size: 10px;
+            color: #aaa;
+        }
+        .toggle-switch {
+            width: 40px;
+            height: 20px;
+            background: #333;
+            border-radius: 20px;
+            position: relative;
+            cursor: pointer;
+        }
+        .toggle-switch.on { background: var(--accent-red); }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px; left: 2px;
+            width: 16px; height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.2s;
+        }
+        .toggle-switch.on::after { left: 22px; }
+
+        .intel-body {
+            font-size: 9px;
+            line-height: 1.4;
+            color: #aaa;
+            padding: 5px 0;
+        }
+        .intel-header {
+            color: var(--accent-red);
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            padding-bottom: 3px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .intel-stat {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #1a1a1a;
+            padding: 2px 0;
+        }
+        .intel-label { color: #666; }
+        .intel-val { color: var(--accent-orange); font-weight: bold; }
+
+        /* FIXED: Solid background for the creator profile intel */
+        #creator-intel {
+            background-color: #0a0505 !important;
+            z-index: 2500;
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    <div id="thumb-preview"><img id="preview-img" src=""></div>
+    <div id="notif-hub"></div>
+
+    <div id="playlist-modal">
+        <div class="modal-content">
+            <h3 class="text-xs font-mono text-red-600 mb-4 uppercase tracking-widest font-bold">Add to Playlist</h3>
+            <div id="playlist-options" class="space-y-2 mb-4 max-h-40 overflow-y-auto"></div>
+            <hr class="border-zinc-800 mb-4">
+            <input type="text" id="newPlaylistName" class="input-box text-xs mb-2" placeholder="NEW PLAYLIST NAME...">
+            <div class="flex gap-2">
+                <button class="btn-base btn-launch text-[10px] flex-1" onclick="createNewPlaylist()">CREATE</button>
+                <button class="btn-base bg-zinc-800 text-white text-[10px]" onclick="closePlaylistModal()">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="autoplay-modal">
+        <div class="modal-content">
+            <h3 class="text-xs font-mono text-orange-500 mb-4 uppercase tracking-widest font-bold">Transmission Ended</h3>
+            <p id="autoplay-text" class="text-[10px] font-mono text-zinc-400 mb-6">WOULD YOU LIKE TO REMOVE COMPLETED VIDEO AND PLAY NEXT IN QUEUE?</p>
+            <div class="flex gap-2">
+                <button class="btn-base btn-launch text-[10px] flex-1" onclick="executeAutoplay()">NEXT VIDEO</button>
+                <button class="btn-base bg-zinc-800 text-white text-[10px] flex-1" onclick="closeAutoplayModal()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal">
+        <div class="modal-content">
+            <h3 class="text-xs font-mono text-red-600 mb-4 uppercase tracking-widest font-bold">System Settings</h3>
+
+            <div class="mb-4">
+                <div class="settings-row" style="margin-bottom: 6px;">
+                    <span>YOUTUBE API KEY</span>
+                    <span id="api-key-status" class="text-[9px]"></span>
+                </div>
+                <input type="password" id="api-key-input" class="input-box text-xs" placeholder="PASTE YOUR API KEY" autocomplete="off" style="margin-bottom: 6px;">
+                <button class="btn-base btn-launch text-[10px] w-full" onclick="saveApiKey()">SAVE KEY</button>
+                <p class="text-[8px] text-zinc-600 mt-2 leading-relaxed">Each visitor uses their own free key (10,000 units/day from Google) — stored only in this browser, never shared or sent anywhere else. Get one at <a href="https://console.cloud.google.com/apis/library/youtube.googleapis.com" target="_blank" rel="noopener" class="text-orange-500">console.cloud.google.com</a> (enable "YouTube Data API v3", then create an API key under Credentials).</p>
+            </div>
+            <hr class="border-zinc-800 mb-4">
+
+            <div class="settings-row">
+                <span>PARTICLES</span>
+                <div id="toggle-particles" class="toggle-switch on" onclick="toggleSetting('particles')"></div>
+            </div>
+
+            <div class="settings-row">
+                <span>UI SCALE</span>
+                <div id="toggle-scale" class="toggle-switch" onclick="toggleSetting('scale')"></div>
+            </div>
+
+            <div class="settings-row">
+                <span>BLACK THEME</span>
+                <div id="toggle-theme" class="toggle-switch" onclick="toggleSetting('theme')"></div>
+            </div>
+
+            <hr class="border-zinc-800 my-4">
+            <button class="btn-base bg-zinc-800 text-white text-[10px] w-full" onclick="closeSettings()">CLOSE</button>
+        </div>
+    </div>
+
+    <div id="sub-sidebar"></div>
+
+    <div id="launch-overlay">
+        <div class="text-center">
+            <div class="animate-ping mb-4 text-2xl">●</div>
+            <div class="tracking-[0.5em] text-xs uppercase">Loading Video...</div>
+            <div id="next-title" class="text-[10px] text-orange-500 mt-4 opacity-70"></div>
+        </div>
+    </div>
+
+    <nav>
+        <div class="nav-center">
+            <div class="mb-2 text-white font-black italic tracking-[0.3em] text-xs uppercase">NOREPTED // BACKBRAIN</div>
+            <div class="flex justify-center">
+                <div class="tooltip-container">
+                    <button class="tab-btn active" id="tab-scanner" onclick="switchTab('scanner')"> VIDEO FINDER [1]</button>
+                    <span class="custom-tooltip">Global Search & Analysis</span>
+                </div>
+                <div class="tooltip-container">
+                    <button class="tab-btn" id="tab-archive" onclick="switchTab('archive')"> VIDEO ARCHIVE [2]</button>
+                    <span class="custom-tooltip">Queue & History Logs</span>
+                </div>
+            </div>
+        </div>
+        <div class="settings-trigger" onclick="openSettings()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 0 1-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 0 1 .872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 0 1 2.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 0 1 2.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 0 1 .872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 0 1-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 0 1-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 1 1 0-5.86 2.929 2.929 0 0 1 0 5.858z"/>
+            </svg>
+        </div>
+    </nav>
+
+    <div class="console-header">
+        <div class="glass-panel p-6 max-w-[850px]">
+            <div id="scanner-controls">
+
+                <div class="flex gap-1 mb-2">
+                    <div class="tooltip-container flex-grow">
+                        <input type="text" id="globalSearch" class="input-box search-sub" placeholder="[S] SEARCH YOUTUBE GLOBALLY..." onkeyup="if(event.key==='Enter') youtubeSearch()">
+                        <span class="custom-tooltip">General Search (Videos & Channels)</span>
+                    </div>
+                    <button class="btn-base btn-action px-4" onclick="youtubeSearch()">SEARCH</button>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-2">
+                    <div class="tooltip-container flex-grow">
+                        <input type="text" id="omniBar" class="input-box" placeholder="[C] PASTE CHANNEL URL OR VIDEO LINK..." onkeyup="if(event.key==='Enter') processOmni()">
+                        <span class="custom-tooltip">@handle, Channel URL, or Video Link</span>
+                    </div>
+                    <div class="tooltip-container">
+                        <button class="btn-base btn-launch md:w-32" onclick="processOmni()">EXECUTE</button>
+                        <span class="custom-tooltip">Analyze & Launch</span>
+                    </div>
+                </div>
+
+                <div id="channel-filters" class="hidden mt-4 pt-4 border-t border-zinc-900">
+                    <div class="flex gap-1 mb-2">
+                        <input type="text" id="channelSearch" class="input-box search-sub flex-grow" placeholder="SEARCH WITHIN THIS CHANNEL..." onkeyup="if(event.key==='Enter') filterChannelResults()">
+                        <button class="btn-base btn-action px-4" onclick="filterChannelResults()">FILTER</button>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="text-[8px] text-zinc-600 mr-4 font-mono">SORT BY:</span>
+                        <button class="sort-btn active" id="sort-new" onclick="sortResults('new')">Newest</button>
+                        <button class="sort-btn" id="sort-old" onclick="sortResults('old')">Oldest</button>
+                        <button class="sort-btn" id="sort-pop" onclick="sortResults('pop')">Popularity</button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between mt-3">
+                    <div class="tooltip-container">
+                        <label class="text-[9px] font-mono text-zinc-500 flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="hideFinished" onchange="applyFilters()" class="accent-red-600"> HIDE FINISHED VIDEOS
+                        </label>
+                        <span class="custom-tooltip">Filter out completed data</span>
+                    </div>
+                    <div id="system-status" class="text-[10px] text-orange-500 font-mono uppercase tracking-widest">System Ready</div>
+                </div>
+
+                <div id="channel-profile" class="hidden flex flex-col items-center mt-4 border-t border-zinc-800 pt-4">
+                    <div class="flex items-center gap-4">
+                        <div class="tooltip-container">
+                            <img id="creator-icon" src="" class="w-12 h-12 rounded border border-red-900 object-cover">
+                            <div id="creator-intel" class="custom-tooltip" style="left: 60px; top: 0; bottom: auto; transform: none; min-width: 250px;"></div>
+                        </div>
+                        <div class="flex flex-col">
+                            <span id="channel-name-display" class="font-mono text-red-600 font-bold uppercase tracking-widest"></span>
+                            <button id="sub-button" class="btn-base btn-sub" onclick="toggleSubscription()">SUBSCRIBE AND PIN TO BAR</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="archive-controls" class="hidden">
+                <div class="flex gap-1 mb-3">
+                    <div class="tooltip-container flex-grow">
+                        <input type="text" id="archiveSearch" class="input-box search-sub" placeholder="FILTER ARCHIVE & QUEUE..." onkeyup="if(event.key==='Enter') filterArchiveLocal()">
+                        <span class="custom-tooltip">Locate specific videos</span>
+                    </div>
+                    <button class="btn-base btn-action px-4" onclick="filterArchiveLocal()">FILTER</button>
+                </div>
+
+                <div class="flex gap-2 justify-center flex-wrap">
+                    <div class="tooltip-container">
+                        <button class="btn-base border border-zinc-800 text-[9px] px-4" onclick="exportData()">Export Session Data</button>
+                        <span class="custom-tooltip">Backup session data</span>
+                    </div>
+                    <div class="tooltip-container">
+                        <button class="btn-base border border-zinc-800 text-[9px] px-4" onclick="document.getElementById('importFile').click()">Import Session Data</button>
+                        <span class="custom-tooltip">Restore session data</span>
+                    </div>
+                    <div class="tooltip-container">
+                        <button class="btn-base border border-orange-900 text-[9px] px-4 text-orange-500" id="pauseBtn" onclick="toggleHistoryPause()">Pause History</button>
+                        <span class="custom-tooltip">Stop logging launches</span>
+                    </div>
+                    <div class="tooltip-container">
+                        <button class="btn-base border border-red-900 text-[9px] px-4 text-red-500" onclick="clearHistory()">Clear History</button>
+                        <span class="custom-tooltip">Wipe history logs</span>
+                    </div>
+                    <input type="file" id="importFile" class="hidden" onchange="importData(event)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-container">
+        <div id="view-scanner" class="w-full">
+            <div id="results"></div>
+            <div id="pagination-control" class="hidden">
+                <div class="tooltip-container w-full">
+                    <button id="load-more-btn" class="btn-base btn-load w-full mt-4 text-zinc-400 border border-maroon-bright p-4" onclick="loadMore(15)">[ + LOAD 15 MORE NODES ]</button>
+                    <span class="custom-tooltip">Fetch next data tier</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-archive" class="w-full hidden-tab">
+            <h2 class="text-red-600 font-bold text-xs tracking-widest mb-4 uppercase">User Playlists</h2>
+            <div id="playlist-list" class="mb-8 space-y-4"></div>
+
+            <div class="accordion-header" onclick="toggleAccordion('q-content', 'q-icon')">
+                <h2 class="text-orange-500 font-bold text-xs tracking-widest uppercase">Priority Queue</h2>
+                <span id="q-icon" class="text-orange-500 font-mono text-xs">+</span>
+            </div>
+            <div id="q-content" class="accordion-content">
+                <div id="watch-later-list" class="space-y-2"></div>
+            </div>
+
+            <div class="accordion-header" onclick="toggleAccordion('h-content', 'h-icon')">
+                <h2 class="text-white font-bold text-xs tracking-widest uppercase">History Log</h2>
+                <span id="h-icon" class="text-white font-mono text-xs">+</span>
+            </div>
+            <div id="h-content" class="accordion-content">
+                <div id="archive-list" class="space-y-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="fixed bottom-0 left-0 w-full p-2 text-[9px] font-mono text-zinc-500 flex justify-center gap-4 z-[100] bg-black/80">
+        <span>NOREPTED // BACKBRAIN v3.6.8</span>
+        <span>LOG: <span id="log-status" class="text-green-600">ACTIVE</span></span>
+    </footer>
+
+    <script>
+        let currentPlaylistId = null, currentCreator = "Global", nextPageToken = "", currentChannelId = "";
+        let historyPaused = false;
+        let pendingVideo = null;
+        let activeVideoData = [];
+        let lastLaunchedFromQueue = null;
+
+        // --- API key handling ---
+        // No key ships with this file. Every visitor supplies and stores their
+        // own free YouTube Data API key (localStorage only), so quota is never
+        // shared across visitors and the key is never exposed in page source.
+        function getApiKey() {
+            return localStorage.getItem('backbrain_yt_api_key') || '';
+        }
+
+        function requireApiKey() {
+            const key = getApiKey();
+            if (!key) {
+                openSettings();
+                showSystemToast('Add your own free YouTube API key in Settings to use this tool.');
+                return null;
+            }
+            return key;
+        }
+
+        function saveApiKey() {
+            const input = document.getElementById('api-key-input');
+            const val = input.value.trim();
+            if (!val) return;
+            localStorage.setItem('backbrain_yt_api_key', val);
+            input.value = '';
+            refreshApiKeyStatus();
+            showSystemToast('API key saved to this browser.');
+        }
+
+        function refreshApiKeyStatus() {
+            const status = document.getElementById('api-key-status');
+            if (!status) return;
+            const has = !!getApiKey();
+            status.textContent = has ? 'SAVED ✓' : 'NOT SET';
+            status.style.color = has ? '#22c55e' : '#666';
+        }
+
+        function showSystemToast(message) {
+            const hub = document.getElementById('notif-hub');
+            const toast = document.createElement('div');
+            toast.className = 'notif-toast';
+            toast.innerHTML = `<div class="text-[11px] text-white font-bold">${message}</div>`;
+            hub.appendChild(toast);
+            setTimeout(() => toast.remove(), 6000);
+        }
+
+        window.onload = () => {
+            updateSidebarUI();
+            checkNewVideos();
+            loadSettings();
+            setInterval(checkNewVideos, 60000);
+            setupShortcuts();
+
+            window.addEventListener('focus', () => {
+                if (lastLaunchedFromQueue) {
+                    const q = JSON.parse(localStorage.getItem('norepted_q') || '[]');
+                    if (q.length > 0) {
+                        document.getElementById('autoplay-modal').style.display = 'flex';
+                    } else {
+                        lastLaunchedFromQueue = null;
+                    }
+                }
+            });
+        };
+        function openSettings() { document.getElementById('settings-modal').style.display = 'flex'; refreshApiKeyStatus(); }
+        function closeSettings() { document.getElementById('settings-modal').style.display = 'none'; }
+
+        function toggleSetting(key) {
+            const el = document.getElementById(`toggle-${key}`);
+            const state = el.classList.toggle('on');
+            localStorage.setItem(`setting_${key}`, state);
+            applySettings();
+        }
+
+        function loadSettings() {
+            ['particles', 'scale', 'theme'].forEach(key => {
+                const saved = localStorage.getItem(`setting_${key}`);
+                const el = document.getElementById(`toggle-${key}`);
+                if (saved === 'true') el.classList.add('on');
+                else if (saved === 'false') el.classList.remove('on');
+            });
+            applySettings();
+        }
+
+        function applySettings() {
+            const part = document.getElementById('toggle-particles').classList.contains('on');
+            const scale = document.getElementById('toggle-scale').classList.contains('on');
+            const theme = document.getElementById('toggle-theme').classList.contains('on');
+
+            document.getElementById('particles-js').style.display = part ? 'block' : 'none';
+            document.body.style.fontSize = scale ? '1.2em' : '1em';
+
+            if (theme) {
+                document.documentElement.style.setProperty('--bg-dark', '#000000');
+                document.documentElement.style.setProperty('--panel-bg', 'rgba(0,0,0,0.98)');
+            } else {
+                document.documentElement.style.setProperty('--bg-dark', '#0f0a0a');
+                document.documentElement.style.setProperty('--panel-bg', 'rgba(26, 15, 15, 0.95)');
+            }
+        }
+
+        function formatN(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num;
+        }
+
+        function setupShortcuts() {
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT') {
+                    if (e.key === 'Escape') document.activeElement.blur();
+                    return;
+                }
+                if (e.key.toLowerCase() === 's') { e.preventDefault(); document.getElementById('globalSearch').focus(); }
+                if (e.key.toLowerCase() === 'c') { e.preventDefault(); document.getElementById('omniBar').focus(); }
+                if (e.key === '1') switchTab('scanner');
+                if (e.key === '2') switchTab('archive');
+                if (e.key === 'Escape') { closePlaylistModal(); closeAutoplayModal(); closeSettings(); hidePreview(); }
+            });
+        }
+
+        function toggleAccordion(contentId, iconId) {
+            const content = document.getElementById(contentId);
+            const icon = document.getElementById(iconId);
+            content.classList.toggle('open');
+            icon.innerText = content.classList.contains('open') ? "−" : "+";
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('[id^="view-"]').forEach(v => v.classList.add('hidden-tab'));
+            document.getElementById(`view-${tab}`).classList.remove('hidden-tab');
+            document.getElementById('scanner-controls').classList.toggle('hidden', tab !== 'scanner');
+            document.getElementById('archive-controls').classList.toggle('hidden', tab !== 'archive');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            if(tab === 'archive') updateArchiveUI();
+        }
+
+        async function youtubeSearch() {
+            const key = requireApiKey();
+            if (!key) return;
+            const query = document.getElementById('globalSearch').value.trim();
+            if(!query) return;
+            document.getElementById('results').innerHTML = '<p class="py-10 animate-pulse text-red-600 font-mono text-xs">QUERYING GLOBAL DATA (CHANNELS & VIDEOS)...</p>';
+            document.getElementById('channel-profile').classList.add('hidden');
+            document.getElementById('channel-filters').classList.add('hidden');
+            document.body.style.backgroundImage = 'none';
+            currentCreator = "Global";
+            currentChannelId = "";
+            activeVideoData = [];
+
+            try {
+                const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=20&type=video,channel&key=${key}`);
+                const data = await res.json();
+
+                const videoIds = data.items.filter(i => i.id.kind === "youtube#video").map(i => i.id.videoId).join(',');
+                const stats = videoIds ? await getDeepMetadata(videoIds) : {};
+
+                const container = document.getElementById('results');
+                container.innerHTML = '';
+
+                data.items.forEach(item => {
+                    if (item.id.kind === "youtube#channel") {
+                        container.innerHTML += `
+                            <div class="video-item channel-item flex justify-between items-center">
+                                <div class="pr-4 max-w-[70%]">
+                                    <h3 class="text-orange-500 font-bold text-xs uppercase truncate">CHANNEL: ${item.snippet.title}</h3>
+                                    <div class="text-[8px] text-zinc-500 italic mt-1">${item.snippet.description.substring(0, 100)}...</div>
+                                </div>
+                                <button class="btn-base btn-launch text-[10px] px-6" onclick="startScan('${item.id.channelId}')">LOAD CHANNEL</button>
+                            </div>
+                        `;
+                    } else {
+                        const id = item.id.videoId;
+                        const meta = stats[id] || {};
+                        activeVideoData.push({ id, title: item.snippet.title, creator: item.snippet.channelTitle, meta });
+                        container.innerHTML += createVideoItemHTML(id, item.snippet.title.replace(/'/g, "\\'"), item.snippet.channelTitle, false, '', meta);
+                    }
+                });
+
+                document.getElementById('pagination-control').classList.add('hidden');
+            } catch(e) { document.getElementById('results').innerHTML = 'SEARCH ERROR'; }
+        }
+
+        async function startScan(input) {
+            const key = requireApiKey();
+            if (!key) return;
+            document.getElementById('results').innerHTML = '<p class="py-10 animate-pulse text-red-600 font-mono text-xs">SCANNING CHANNEL...</p>';
+            nextPageToken = "";
+            activeVideoData = [];
+            try {
+                let url = `https://www.googleapis.com/youtube/v3/channels?part=id,snippet,contentDetails,brandingSettings,statistics&key=${key}`;
+                if (input.startsWith("UC")) url += `&id=${input}`;
+                else if (input.includes("@")) url += `&forHandle=${input.split("@")[1].split("/")[0]}`;
+                else url += `&forHandle=${input}`;
+                const cRes = await fetch(url);
+                const cData = await cRes.json();
+                const chan = cData.items[0];
+                currentChannelId = chan.id;
+                currentPlaylistId = chan.contentDetails.relatedPlaylists.uploads;
+                currentCreator = chan.snippet.title;
+
+                const stats = chan.statistics;
+                const ratio = ((stats.subscriberCount / stats.viewCount) * 100).toFixed(3);
+                const intelHTML = `
+                    <div class="intel-header">Node: ${chan.snippet.title}</div>
+                    <div class="intel-body italic mb-2">${chan.snippet.description.substring(0, 100)}...</div>
+                    <div class="intel-stat"><span class="intel-label">Subscribers:</span><span class="intel-val">${formatN(stats.subscriberCount)}</span></div>
+                    <div class="intel-stat"><span class="intel-label">Total Views:</span><span class="intel-val">${formatN(stats.viewCount)}</span></div>
+                    <div class="intel-stat"><span class="intel-label">Video Count:</span><span class="intel-val">${formatN(stats.videoCount)}</span></div>
+                    <div class="intel-stat"><span class="intel-label">Sub-to-View:</span><span class="intel-val">${ratio}%</span></div>
+                `;
+                document.getElementById('creator-intel').innerHTML = intelHTML;
+
+                if(chan.brandingSettings.image && chan.brandingSettings.image.bannerExternalUrl) {
+                    document.body.style.backgroundImage = `url('${chan.brandingSettings.image.bannerExternalUrl}=w2120-fcrop64=1,00005a57ffffa5a8-none')`;
+                } else { document.body.style.backgroundImage = 'none'; }
+
+                document.getElementById('creator-icon').src = chan.snippet.thumbnails.default.url;
+                document.getElementById('channel-name-display').innerText = currentCreator;
+                document.getElementById('channel-profile').classList.remove('hidden');
+                document.getElementById('channel-filters').classList.remove('hidden');
+
+                const subs = JSON.parse(localStorage.getItem('backbrain_subs') || '[]');
+                const isSubbed = subs.some(s => s.id === currentChannelId);
+                document.getElementById('sub-button').innerText = isSubbed ? "UNSUBSCRIBE" : "SUBSCRIBE AND PIN";
+                document.getElementById('results').innerHTML = '';
+                loadMore(15);
+            } catch(e) { document.getElementById('results').innerHTML = 'FAIL'; }
+        }
+
+        async function updateSidebarUI() {
+            const subs = JSON.parse(localStorage.getItem('backbrain_subs') || '[]');
+            const sidebar = document.getElementById('sub-sidebar');
+            let sidebarHTML = '';
+            for (let s of subs) {
+                sidebarHTML += `
+                    <div class="sub-icon tooltip-container" onclick="startScan('${s.id}')">
+                        <img src="${s.logo}">
+                        <div class="custom-tooltip">
+                            <div class="intel-header">${s.name}</div>
+                            <div class="text-[8px] text-zinc-500 uppercase tracking-widest">Database Active</div>
+                        </div>
+                    </div>
+                `;
+            }
+            sidebar.innerHTML = sidebarHTML;
+        }
+
+        function sortResults(type) {
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`sort-${type}`).classList.add('active');
+            if (type === 'new') activeVideoData.sort((a, b) => b.meta.rawDate - a.meta.rawDate);
+            else if (type === 'old') activeVideoData.sort((a, b) => a.meta.rawDate - b.meta.rawDate);
+            else if (type === 'pop') activeVideoData.sort((a, b) => b.meta.rawViews - a.meta.rawViews);
+            renderActiveResults();
+        }
+
+        function filterChannelResults() {
+            const query = document.getElementById('channelSearch').value.toLowerCase();
+            document.querySelectorAll('#results .video-item').forEach(el => {
+                const title = el.querySelector('h3').innerText.toLowerCase();
+                el.classList.toggle('hidden-node', !title.includes(query));
+            });
+        }
+
+        function renderActiveResults() {
+            const container = document.getElementById('results');
+            container.innerHTML = activeVideoData.map(v =>
+                createVideoItemHTML(v.id, v.title.replace(/'/g, "\\'"), v.creator, false, '', v.meta)
+            ).join('');
+            applyFilters();
+        }
+
+        function toggleSubscription() {
+            if (!currentChannelId) return;
+            let subs = JSON.parse(localStorage.getItem('backbrain_subs') || '[]');
+            const index = subs.findIndex(s => s.id === currentChannelId);
+            if (index > -1) {
+                subs.splice(index, 1);
+                document.getElementById('sub-button').innerText = "SUBSCRIBE";
+            } else {
+                subs.push({ id: currentChannelId, name: currentCreator, logo: document.getElementById('creator-icon').src, lastSeenVideo: null });
+                document.getElementById('sub-button').innerText = "UNSUBSCRIBE";
+            }
+            localStorage.setItem('backbrain_subs', JSON.stringify(subs));
+            updateSidebarUI();
+        }
+
+        async function checkNewVideos() {
+            const key = getApiKey();
+            if (!key) return;
+            let subs = JSON.parse(localStorage.getItem('backbrain_subs') || '[]');
+            if (subs.length === 0) return;
+            for (let sub of subs) {
+                try {
+                    const res = await fetch(`https://www.googleapis.com/youtube/v3/activities?part=snippet,contentDetails&channelId=${sub.id}&maxResults=1&key=${key}`);
+                    const data = await res.json();
+                    if(data.items && data.items[0]) {
+                        const latest = data.items[0].snippet.title;
+                        const videoId = data.items[0].contentDetails.upload.videoId;
+                        if(sub.lastSeenVideo && sub.lastSeenVideo !== videoId) showNotification(sub.name, latest, videoId);
+                        sub.lastSeenVideo = videoId;
+                    }
+                } catch(e) {}
+            }
+            localStorage.setItem('backbrain_subs', JSON.stringify(subs));
+        }
+
+        function showNotification(channel, title, id) {
+            const hub = document.getElementById('notif-hub');
+            const toast = document.createElement('div');
+            toast.className = 'notif-toast cursor-pointer';
+            toast.innerHTML = `<div class="text-[9px] text-zinc-500 uppercase tracking-tighter">New Transmission from ${channel}</div><div class="text-[11px] text-white font-bold truncate">${title}</div>`;
+            toast.onclick = () => smartLaunch(id, title);
+            hub.appendChild(toast);
+            setTimeout(() => toast.remove(), 8000);
+        }
+
+        async function getDeepMetadata(ids) {
+            const key = getApiKey();
+            if (!key) return {};
+            const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${ids}&key=${key}`);
+            const data = await res.json();
+            const map = {};
+            data.items.forEach(v => {
+                const views = Number(v.statistics.viewCount || 0);
+                const likes = Number(v.statistics.likeCount || 0);
+                map[v.id] = {
+                    views: formatN(views),
+                    rawViews: views,
+                    likes: formatN(likes),
+                    rawLikes: likes,
+                    ratio: views > 0 ? ((likes/views)*100).toFixed(2) : "0",
+                    date: new Date(v.snippet.publishedAt).toLocaleDateString(),
+                    rawDate: new Date(v.snippet.publishedAt).getTime(),
+                    tags: v.snippet.tags || [],
+                    desc: v.snippet.description.substring(0, 150) + "..."
+                };
+            });
+            return map;
+        }
+
+        async function loadMore(count) {
+            const key = requireApiKey();
+            if (!key) return;
+            const vRes = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=${count}&playlistId=${currentPlaylistId}&pageToken=${nextPageToken}&key=${key}`);
+            const vData = await vRes.json();
+            nextPageToken = vData.nextPageToken || "";
+            const ids = vData.items.map(i => i.snippet.resourceId.videoId).join(',');
+            const stats = await getDeepMetadata(ids);
+            const newData = vData.items.map(v => {
+                const id = v.snippet.resourceId.videoId;
+                return { id, title: v.snippet.title, creator: currentCreator, meta: stats[id] || {} };
+            });
+            activeVideoData = [...activeVideoData, ...newData];
+            renderActiveResults();
+            document.getElementById('pagination-control').classList.toggle('hidden', !nextPageToken);
+        }
+
+        function createVideoItemHTML(id, title, creator, isGlobal, channelId = '', meta) {
+            const s = JSON.parse(localStorage.getItem(`status_${id}`) || '{"started":false,"finished":false}');
+            const isLater = (JSON.parse(localStorage.getItem('norepted_q') || '[]')).some(x => x.id === id);
+            const tagString = meta.tags && meta.tags.length > 0 ? meta.tags.slice(0, 3).join(', ') : "No Tags";
+            return `
+            <div id="vid-${id}" class="video-item flex justify-between items-center ${s.finished?'state-finished':''}" onmouseenter="showPreview('${id}')" onmouseleave="hidePreview()" data-finished="${s.finished}">
+                <div class="pr-4 max-w-[55%]">
+                    <div class="video-title-container">
+                        <h3 class="text-white font-bold text-xs uppercase truncate hover:text-red-500 transition-colors">${title}</h3>
+                        <div class="video-info-hover">
+                            <div class="text-orange-500 mb-1 border-b border-zinc-800 pb-1">DATABASE FRAGMENT</div>
+                            <div class="mb-2 text-zinc-300">TAGS: ${tagString}</div>
+                            <div class="text-[9px] text-red-400 mb-2">LIKES: ${meta.likes || 0} | RATIO: ${meta.ratio || 0}%</div>
+                            <div class="italic text-[8px] leading-relaxed text-zinc-500">${meta.desc || ''}</div>
+                        </div>
+                    </div>
+                    <div class="flex mt-1 flex-wrap gap-y-1">
+                        <span class="meta-tag">BY: ${creator}</span>
+                        <span class="meta-tag">👁 ${meta.views || 0}</span>
+                        <span class="meta-tag text-orange-400">DATE: ${meta.date || ''}</span>
+                    </div>
+                </div>
+                <div class="flex gap-1 shrink-0">
+                    <button class="btn-base btn-control" onclick="openPlaylistModal('${id}', '${title.replace(/'/g, "\\'")}', '${creator}')">+</button>
+                    <button class="btn-base btn-copy" onclick="copyLink('${id}', this)">❐</button>
+                    <button class="btn-base btn-control ${isLater?'active':''}" onclick="toggleLater('${id}', '${title}')">🕒</button>
+                    <button class="btn-base btn-control" onclick="toggleFinished('${id}', '${title}')">✓</button>
+                    <button class="btn-base btn-launch text-[10px]" onclick="smartLaunch('${id}', '${title}', true)">Launch</button>
+                </div>
+            </div>`;
+        }
+
+        function openPlaylistModal(id, title, creator) {
+            pendingVideo = { id, title, creator };
+            const modal = document.getElementById('playlist-modal');
+            const options = document.getElementById('playlist-options');
+            const lists = JSON.parse(localStorage.getItem('backbrain_playlists') || '{}');
+            options.innerHTML = Object.keys(lists).map(name => `
+                <button class="w-full text-left p-2 text-[10px] font-mono bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800" onclick="addToPlaylist('${name}')">
+                    ${name.toUpperCase()} (${lists[name].length} NODES)
+                </button>
+            `).join('') || '<p class="text-[9px] text-zinc-600 font-mono">NO PLAYLISTS DETECTED</p>';
+            modal.style.display = 'flex';
+        }
+
+        function closePlaylistModal() { document.getElementById('playlist-modal').style.display = 'none'; }
+        function closeAutoplayModal() { document.getElementById('autoplay-modal').style.display = 'none'; lastLaunchedFromQueue = null; }
+
+        function executeAutoplay() {
+            if (!lastLaunchedFromQueue) return;
+            let q = JSON.parse(localStorage.getItem('norepted_q') || '[]');
+            let s = JSON.parse(localStorage.getItem(`status_${lastLaunchedFromQueue.id}`) || '{"started":false,"finished":false}');
+            s.finished = true;
+            localStorage.setItem(`status_${lastLaunchedFromQueue.id}`, JSON.stringify(s));
+            const index = q.findIndex(x => x.id === lastLaunchedFromQueue.id);
+            if (index > -1) q.splice(index, 1);
+            localStorage.setItem('norepted_q', JSON.stringify(q));
+            closeAutoplayModal();
+            updateArchiveUI();
+            if (q.length > 0) {
+                const nextNode = q[0];
+                smartLaunch(nextNode.id, nextNode.title, true);
+            }
+        }
+
+        function createNewPlaylist() {
+            const name = document.getElementById('newPlaylistName').value.trim();
+            if(!name) return;
+            let lists = JSON.parse(localStorage.getItem('backbrain_playlists') || '{}');
+            if(!lists[name]) lists[name] = [];
+            localStorage.setItem('backbrain_playlists', JSON.stringify(lists));
+            addToPlaylist(name);
+            document.getElementById('newPlaylistName').value = '';
+        }
+
+        function addToPlaylist(name) {
+            let lists = JSON.parse(localStorage.getItem('backbrain_playlists') || '{}');
+            if(!lists[name].find(v => v.id === pendingVideo.id)) {
+                lists[name].push(pendingVideo);
+                localStorage.setItem('backbrain_playlists', JSON.stringify(lists));
+            }
+            closePlaylistModal();
+        }
+
+        function removePlaylist(name) {
+            if(!confirm(`Delete playlist ${name}?`)) return;
+            let lists = JSON.parse(localStorage.getItem('backbrain_playlists') || '{}');
+            delete lists[name];
+            localStorage.setItem('backbrain_playlists', JSON.stringify(lists));
+            updateArchiveUI();
+        }
+
+        function smartLaunch(id, title, fromQueue = false) {
+            document.getElementById('next-title').innerText = title;
+            document.getElementById('launch-overlay').style.display = 'flex';
+            if(!historyPaused) updateStatus(id, 'started', true, title);
+            if (fromQueue) lastLaunchedFromQueue = { id, title };
+            else lastLaunchedFromQueue = null;
+            const embedUrl = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&modestbranding=1&rel=0`;
+            setTimeout(() => {
+                document.getElementById('launch-overlay').style.display = 'none';
+                // A window.open('about:blank') + document.write() popup has no real
+                // navigable URL, and YouTube's embed player rejects that context
+                // (shows "Error 153"). Navigating to a blob: URL instead gives the
+                // tab a real address, matching the pattern already used in PROXY.html.
+                const safeTitle = String(title).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+                // YouTube now strictly requires a valid Referer/Origin from the
+                // embedding page (missing/blocked referrer -> "Error 153"). The
+                // blob document has no <meta referrer> of its own, so this must
+                // be set explicitly on the iframe rather than relying on the
+                // browser's default policy.
+                const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${safeTitle}</title><style>html,body{margin:0;padding:0;background:#000;height:100%;}iframe{position:fixed;inset:0;width:100%;height:100%;border:0;}</style></head><body><iframe src="${embedUrl}" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></body></html>`;
+                const blob = new Blob([html], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                window.open(url, '_blank');
+            }, 800);
+        }
+
+        function toggleHistoryPause() {
+            historyPaused = !historyPaused;
+            document.getElementById('pauseBtn').innerText = historyPaused ? "Unpause History" : "Pause History";
+            document.getElementById('log-status').innerText = historyPaused ? "PAUSED" : "ACTIVE";
+            document.getElementById('log-status').className = historyPaused ? "text-orange-600" : "text-green-600";
+        }
+
+        function applyFilters() {
+            const hide = document.getElementById('hideFinished').checked;
+            document.querySelectorAll('.video-item').forEach(el => {
+                const isFinished = el.getAttribute('data-finished') === 'true';
+                el.classList.toggle('hidden-node', hide && isFinished);
+            });
+        }
+
+        function updateStatus(id, key, val, title) {
+            let s = JSON.parse(localStorage.getItem(`status_${id}`) || '{"started":false,"finished":false}');
+            s[key] = val;
+            localStorage.setItem(`status_${id}`, JSON.stringify(s));
+            if(key === 'started') {
+                let arc = JSON.parse(localStorage.getItem('norepted_arc') || '[]');
+                if(!arc.find(x => x.id === id)) {
+                    arc.unshift({id, title, creator: currentCreator, time: Date.now()});
+                    localStorage.setItem('norepted_arc', JSON.stringify(arc));
+                }
+            }
+        }
+
+        function toggleFinished(id, title) {
+            let s = JSON.parse(localStorage.getItem(`status_${id}`) || '{"started":false,"finished":false}');
+            s.finished = !s.finished;
+            localStorage.setItem(`status_${id}`, JSON.stringify(s));
+            const el = document.getElementById(`vid-${id}`);
+            if (el) { el.classList.toggle('state-finished', s.finished); el.setAttribute('data-finished', s.finished); applyFilters(); }
+            updateArchiveUI();
+        }
+
+        function toggleLater(id, title) {
+            let q = JSON.parse(localStorage.getItem('norepted_q') || '[]');
+            const i = q.findIndex(x => x.id === id);
+            if(i > -1) q.splice(i, 1);
+            else q.push({id, title, creator: currentCreator});
+            localStorage.setItem('norepted_q', JSON.stringify(q));
+            updateArchiveUI();
+        }
+
+        function copyLink(id, btn) {
+            navigator.clipboard.writeText(`https://www.youtube.com/watch?v=${id}`);
+            btn.innerText = "✔";
+            setTimeout(() => btn.innerText = "❐", 1000);
+        }
+
+        function filterArchiveLocal() {
+            const query = document.getElementById('archiveSearch').value.toLowerCase();
+            document.querySelectorAll('#watch-later-list > div, #archive-list > div, .playlist-container').forEach(el => {
+                const text = el.innerText.toLowerCase();
+                el.style.display = text.includes(query) ? 'block' : 'none';
+            });
+        }
+
+        function updateArchiveUI() {
+            const arc = JSON.parse(localStorage.getItem('norepted_arc') || '[]');
+            const q = JSON.parse(localStorage.getItem('norepted_q') || '[]');
+            const lists = JSON.parse(localStorage.getItem('backbrain_playlists') || '{}');
+            document.getElementById('playlist-list').innerHTML = Object.keys(lists).map(name => `
+                <div class="playlist-container border border-zinc-800 p-3 bg-black/40">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] text-red-600 font-bold uppercase tracking-widest">${name}</span>
+                        <button class="text-[9px] text-zinc-600 hover:text-red-600" onclick="removePlaylist('${name}')">[DELETE]</button>
+                    </div>
+                    <div class="space-y-1">${lists[name].map(v => `<div class="text-[9px] font-mono text-zinc-400 cursor-pointer hover:text-white truncate" onclick="smartLaunch('${v.id}', '${v.title}')">> ${v.title}</div>`).join('')}</div>
+                </div>`).join('') || '<p class="text-[9px] text-zinc-700">NO LOCAL PLAYLISTS</p>';
+            document.getElementById('watch-later-list').innerHTML = q.map(x => `<div class="flex justify-between text-[10px] font-mono border-b border-zinc-900 py-1" onmouseenter="showPreview('${x.id}')" onmouseleave="hidePreview()"><span class="cursor-pointer hover:text-orange-500" onclick="smartLaunch('${x.id}', '${x.title}', true)">[Q] ${x.title}</span><button class="text-red-900" onclick="toggleLater('${x.id}')">[X]</button></div>`).join('') || '<p class="text-[9px] text-zinc-600">QUEUE EMPTY</p>';
+            document.getElementById('archive-list').innerHTML = arc.map(x => `<div class="text-[10px] font-mono py-1 cursor-pointer hover:opacity-100 opacity-60" onmouseenter="showPreview('${x.id}')" onmouseleave="hidePreview()" onclick="smartLaunch('${x.id}', '${x.title}')">[L] ${x.title}</div>`).join('') || '<p class="text-[9px] text-zinc-600">HISTORY EMPTY</p>';
+        }
+
+        function showPreview(id) {
+            const preview = document.getElementById('thumb-preview');
+            document.getElementById('preview-img').src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+            preview.style.display = 'block';
+        }
+        function hidePreview() { document.getElementById('thumb-preview').style.display = 'none'; }
+
+        function exportData() {
+            const data = { archive: JSON.parse(localStorage.getItem('norepted_arc') || '[]'), queue: JSON.parse(localStorage.getItem('norepted_q') || '[]'), subscriptions: JSON.parse(localStorage.getItem('backbrain_subs') || '[]'), playlists: JSON.parse(localStorage.getItem('backbrain_playlists') || '{}') };
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backbrain_dump.json`; a.click();
+        }
+
+        function importData(event) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = JSON.parse(e.target.result);
+                localStorage.setItem('norepted_arc', JSON.stringify(data.archive));
+                localStorage.setItem('norepted_q', JSON.stringify(data.queue));
+                localStorage.setItem('backbrain_subs', JSON.stringify(data.subscriptions));
+                localStorage.setItem('backbrain_playlists', JSON.stringify(data.playlists));
+                updateArchiveUI(); updateSidebarUI();
+            };
+            reader.readAsText(event.target.files[0]);
+        }
+
+        async function processOmni() {
+            const input = document.getElementById('omniBar').value.trim();
+            if(!input) return;
+            if (input.includes("v=") || input.includes("be/") || (input.length === 11 && !input.startsWith("UC"))) {
+                let id = input;
+                if (input.includes("v=")) id = input.split("v=")[1].split("&")[0];
+                else if (input.includes("be/")) id = input.split("be/")[1].split("?")[0];
+                smartLaunch(id, "Direct Node: " + id);
+            } else { startScan(input); }
+        }
+
+        particlesJS("particles-js", { "particles": { "number": { "value": 15 }, "color": { "value": "#4a0404" }, "line_linked": { "enable": true, "color": "#4a0404" }, "move": { "speed": 1 } } });
+    </script>
+</body>
+</html>

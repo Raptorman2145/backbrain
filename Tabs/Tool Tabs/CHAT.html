@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chat</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  :root { --bg: #1e1f22; }
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .gate-screen { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; overflow-y: auto; box-sizing: border-box; }
+  .gate-box { max-width: 480px; width: 100%; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; box-sizing: border-box; }
+  .gate-box h1 { margin: 0 0 6px; font-size: 20px; }
+  .gate-box p.sub { color: var(--text-muted); margin: 0 0 20px; font-size: 13px; line-height: 1.5; }
+  .gate-box label { display: block; font-size: 12px; color: var(--text-muted); margin: 14px 0 4px; }
+  .gate-box input, .gate-box textarea {
+    width: 100%; box-sizing: border-box;
+    padding: 10px 12px; font-family: inherit; font-size: 14px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text);
+  }
+  .gate-box textarea { font-family: 'Consolas', monospace; font-size: 12px; height: 120px; resize: vertical; }
+  .gate-box input:focus, .gate-box textarea:focus { outline: none; border-color: var(--accent-bg); box-shadow: var(--focus-ring); }
+  .gate-box button[type="submit"] {
+    margin-top: 18px; width: 100%; padding: 12px; font-size: 14px; font-weight: 700;
+    border: none; border-radius: var(--radius-sm); background: var(--accent-bg); color: var(--accent-text); cursor: pointer; font-family: inherit;
+  }
+  .gate-note { font-size: 11px; color: var(--text-muted); line-height: 1.7; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .gate-note code { background: #000; padding: 1px 5px; border-radius: 3px; }
+  .rules-block { background: #000; color: #9cdcfe; padding: 10px; border-radius: var(--radius-sm); font-family: 'Consolas', monospace; font-size: 11px; white-space: pre; overflow-x: auto; margin: 8px 0 0; }
+  .gate-note a { color: var(--accent-bg); }
+  #copyRulesBtn {
+    font-size: 10px; padding: 3px 8px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; font-family: inherit;
+  }
+  .link-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; text-decoration: underline; padding: 0; font-size: 11px; font-family: inherit; }
+
+  /* Setting display: flex/grid on these classes otherwise defeats the [hidden]
+     attribute (author styles always win over the UA's built-in [hidden] rule,
+     regardless of selector specificity), so screens would stack instead of
+     switching. These re-assert display: none whenever [hidden] is present. */
+  .gate-screen[hidden], .chat-layout[hidden] { display: none; }
+
+  .chat-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 200px 1fr 180px; }
+  @media (max-width: 700px) {
+    .chat-layout { grid-template-columns: 130px 1fr; }
+    .chat-members { display: none; }
+  }
+
+  .chat-channels { background: #111214; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .channel-list { flex: 1; overflow-y: auto; padding: 10px 8px; }
+  .channel-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: var(--radius-sm); color: var(--text-muted); font-size: 13px; cursor: pointer; margin-bottom: 2px; }
+  .channel-row:hover { background: var(--surface); color: var(--text); }
+  .channel-row.active { background: var(--surface-alt); color: var(--text); font-weight: 600; }
+  .channel-row .channel-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .channel-row .del-channel { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; flex-shrink: 0; }
+  .channel-row:hover .del-channel { opacity: 1; }
+  .add-channel-row { display: flex; gap: 4px; padding: 6px 8px; }
+  .add-channel-row input {
+    flex: 1; min-width: 0; padding: 6px 8px; font-size: 12px; font-family: inherit;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+  }
+  .add-channel-row button {
+    padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text); cursor: pointer; font-size: 12px;
+  }
+
+  .chat-identity { padding: 10px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: #0c0d0e; }
+  .chat-identity .who { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chat-identity button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+  .chat-identity button:hover { color: var(--accent-bg); }
+
+  .chat-main { display: flex; flex-direction: column; min-width: 0; }
+  .chat-header { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .chat-header i { color: var(--text-muted); }
+
+  .message-list { flex: 1; overflow-y: auto; padding: 16px; }
+  .msg-row { margin-bottom: 14px; }
+  .msg-nick { font-weight: 700; font-size: 13px; color: var(--accent-bg); margin-right: 8px; }
+  .msg-time { font-size: 10px; color: var(--text-muted); }
+  .msg-text { font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; margin-top: 2px; }
+  .msg-broken { color: var(--text-muted); font-style: italic; }
+
+  .typing-indicator { padding: 0 16px 6px; font-size: 11px; color: var(--text-muted); font-style: italic; min-height: 16px; flex-shrink: 0; }
+
+  .chat-input-row { padding: 12px 16px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .chat-input-row textarea {
+    width: 100%; box-sizing: border-box; resize: none; height: 44px;
+    padding: 10px 12px; font-family: inherit; font-size: 14px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+  }
+  .chat-input-row textarea:focus { outline: none; border-color: var(--accent-bg); }
+
+  .chat-members { background: #111214; border-left: 1px solid var(--border); padding: 12px 10px; overflow-y: auto; }
+  .chat-members h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  .member-row { display: flex; align-items: center; gap: 8px; padding: 5px 4px; font-size: 13px; overflow: hidden; }
+  .member-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .member-dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; flex-shrink: 0; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 3000; }
+  .modal-overlay[hidden] { display: none; }
+  .modal-box { background: var(--surface-alt); border: 1px solid var(--border-strong); border-radius: var(--radius-lg); padding: 24px; width: 340px; max-width: calc(100% - 32px); box-sizing: border-box; }
+  .modal-box h3 { margin: 0 0 8px; font-size: 16px; }
+  .modal-box p.sub { color: var(--text-muted); margin: 0 0 16px; font-size: 12px; line-height: 1.5; }
+  .modal-row { display: flex; gap: 8px; }
+  #passphraseDisplay {
+    flex: 1; min-width: 0; padding: 10px 12px; font-family: 'Consolas', monospace; font-size: 14px;
+    border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: #000; color: var(--text);
+  }
+  .modal-box button { font-family: inherit; cursor: pointer; }
+  #copyPassphraseBtn { padding: 0 14px; border-radius: var(--radius-sm); border: none; background: var(--accent-bg); color: var(--accent-text); font-weight: 600; flex-shrink: 0; }
+  #closePassphraseModalBtn { width: 100%; margin-top: 16px; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); }
+
+  #toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--accent-bg); color: #fff; padding: 8px 16px; border-radius: 20px;
+    font-size: 12px; display: none; z-index: 2000; box-shadow: var(--shadow-md);
+  }
+</style>
+</head>
+<body>
+
+<div id="setupScreen" class="gate-screen" hidden>
+  <div class="gate-box">
+    <h1>Set Up Chat</h1>
+    <p class="sub">This chat needs a free Firebase project to relay messages between devices &mdash; this site has no server of its own. Every message is encrypted in your browser before it's sent (see the Join screen), so Firebase only ever stores unreadable ciphertext.</p>
+    <form id="setupForm">
+      <label for="configInput">Paste your Firebase <code>firebaseConfig</code> object</label>
+      <textarea id="configInput" placeholder="{ apiKey: '...', authDomain: '...', databaseURL: '...', projectId: '...', ... }" required></textarea>
+      <button type="submit">Save &amp; Continue</button>
+    </form>
+    <div class="gate-note">
+      <strong>One-time setup (a few minutes):</strong><br>
+      1. Go to <a href="https://console.firebase.google.com" target="_blank" rel="noopener">console.firebase.google.com</a> and create a project (no credit card needed).<br>
+      2. Click the <code>&lt;/&gt;</code> "add web app" icon, register an app, and copy the <code>firebaseConfig</code> object it shows you.<br>
+      3. In the left menu: Build &rarr; Realtime Database &rarr; Create Database (any region; starting in locked mode is fine).<br>
+      4. Open that database's <strong>Rules</strong> tab, replace the contents with the JSON below, then Publish.<br>
+      5. Paste the config object above and continue.
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+        <span>Realtime Database rules to paste:</span>
+        <button type="button" id="copyRulesBtn">Copy</button>
+      </div>
+      <pre class="rules-block" id="rulesBlock"></pre>
+    </div>
+  </div>
+</div>
+
+<div id="joinScreen" class="gate-screen" hidden>
+  <div class="gate-box">
+    <h1>Join Room</h1>
+    <p class="sub">Enter the shared passphrase for your private room &mdash; treat it like a Discord invite link, anyone who knows it can join, read, and post. Messages are encrypted with a key derived from this passphrase, so even someone who found your Firebase project couldn't read them without it. This isn't per-person identity: anyone with the passphrase can post under any nickname.</p>
+    <form id="joinForm">
+      <label for="joinPassphrase">Room passphrase</label>
+      <input type="password" id="joinPassphrase" autocomplete="off" required>
+      <label for="joinNickname">Nickname</label>
+      <input type="text" id="joinNickname" maxlength="24" autocomplete="off" required>
+      <button type="submit">Join</button>
+    </form>
+    <div class="gate-note">
+      <button type="button" id="changeProjectBtn" class="link-btn">Use a different Firebase project</button>
+    </div>
+  </div>
+</div>
+
+<div id="chatScreen" class="chat-layout" hidden>
+  <div class="chat-channels">
+    <div class="channel-list" id="channelList"></div>
+    <div class="add-channel-row">
+      <input type="text" id="newChannelName" placeholder="New channel..." maxlength="24">
+      <button type="button" id="addChannelBtn">+</button>
+    </div>
+    <div class="chat-identity">
+      <span class="who" id="whoAmI"></span>
+      <button type="button" id="invitePassphraseBtn" title="Show/copy room passphrase"><i class="fa-solid fa-key"></i></button>
+      <button type="button" id="leaveBtn" title="Leave room"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </div>
+  </div>
+
+  <div class="chat-main">
+    <div class="chat-header"><i class="fa-solid fa-hashtag"></i><span id="channelHeaderName"></span></div>
+    <div class="message-list" id="messageList"></div>
+    <div class="typing-indicator" id="typingIndicator"></div>
+    <div class="chat-input-row">
+      <textarea id="messageInput" placeholder="Message..." rows="1"></textarea>
+    </div>
+  </div>
+
+  <div class="chat-members">
+    <h4>Online</h4>
+    <div id="memberList"></div>
+  </div>
+</div>
+
+<div id="passphraseModal" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <h3>Room Passphrase</h3>
+    <p class="sub">Anyone you share this with can join and read this room &mdash; treat it like an invite link.</p>
+    <div class="modal-row">
+      <input type="text" id="passphraseDisplay" readonly>
+      <button type="button" id="copyPassphraseBtn">Copy</button>
+    </div>
+    <button type="button" id="closePassphraseModalBtn">Close</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="../../code/General%20Code/sidebar.js"></script>
+<script>
+  const CONFIG_KEY = 'chat_firebase_config';
+  const SESSION_KEY = 'chat_session';
+  const PBKDF2_ITERATIONS = 150000;
+  // Fixed (not random) on purpose: every device must derive the SAME key/room
+  // from the SAME passphrase independently, with no server to coordinate a salt.
+  const KEY_SALT = 'backbrain-chat-key-salt-v1';
+  const ROOM_SALT = 'backbrain-chat-room-salt-v1';
+  const TYPING_TTL_MS = 6000;
+
+  const RULES_JSON = `{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}`;
+
+  // --- DOM refs ---
+  const setupScreen = document.getElementById('setupScreen');
+  const joinScreen = document.getElementById('joinScreen');
+  const chatScreen = document.getElementById('chatScreen');
+  const setupForm = document.getElementById('setupForm');
+  const configInput = document.getElementById('configInput');
+  const rulesBlock = document.getElementById('rulesBlock');
+  const copyRulesBtn = document.getElementById('copyRulesBtn');
+  const joinForm = document.getElementById('joinForm');
+  const joinPassphrase = document.getElementById('joinPassphrase');
+  const joinNickname = document.getElementById('joinNickname');
+  const changeProjectBtn = document.getElementById('changeProjectBtn');
+  const channelList = document.getElementById('channelList');
+  const newChannelName = document.getElementById('newChannelName');
+  const addChannelBtn = document.getElementById('addChannelBtn');
+  const whoAmI = document.getElementById('whoAmI');
+  const leaveBtn = document.getElementById('leaveBtn');
+  const invitePassphraseBtn = document.getElementById('invitePassphraseBtn');
+  const passphraseModal = document.getElementById('passphraseModal');
+  const passphraseDisplay = document.getElementById('passphraseDisplay');
+  const copyPassphraseBtn = document.getElementById('copyPassphraseBtn');
+  const closePassphraseModalBtn = document.getElementById('closePassphraseModalBtn');
+  const channelHeaderName = document.getElementById('channelHeaderName');
+  const messageList = document.getElementById('messageList');
+  const typingIndicator = document.getElementById('typingIndicator');
+  const messageInput = document.getElementById('messageInput');
+  const memberList = document.getElementById('memberList');
+
+  rulesBlock.textContent = RULES_JSON;
+
+  // --- State ---
+  let firebaseApp = null;
+  let db = null;
+  let aesKey = null;
+  let roomId = null;
+  let sessionId = null;
+  let nickname = null;
+  let currentChannelId = null;
+  let messagesRef = null;
+  let typingRef = null;
+  let presenceRef = null;
+  let typingTimer = null;
+  let lastChannelEntries = [];
+  const renderedMessageIds = new Set();
+
+  function showToast(message, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = message;
+    t.style.background = isError ? '#c0392b' : 'var(--accent-bg)';
+    t.style.display = 'block';
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(() => { t.style.display = 'none'; }, 2500);
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // --- Persistence ---
+  function loadConfig() {
+    try { return JSON.parse(localStorage.getItem(CONFIG_KEY)); } catch { return null; }
+  }
+  function saveConfig(cfg) { localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); }
+  function clearConfig() { localStorage.removeItem(CONFIG_KEY); }
+
+  function loadSession() {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; }
+  }
+  function saveSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+  function clearSession() { localStorage.removeItem(SESSION_KEY); }
+
+  function parseFirebaseConfigInput(text) {
+    const cleaned = text.trim().replace(/^const\s+firebaseConfig\s*=\s*/, '').replace(/;?\s*$/, '');
+    try {
+      const obj = new Function('return (' + cleaned + ')')();
+      if (obj && typeof obj === 'object' && obj.databaseURL && obj.apiKey) return obj;
+    } catch {}
+    return null;
+  }
+
+  // --- Crypto ---
+  function b64FromBytes(bytes) {
+    let bin = '';
+    bytes.forEach(b => { bin += String.fromCharCode(b); });
+    return btoa(bin);
+  }
+  function bytesFromB64(b64) {
+    return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  }
+
+  async function deriveRoomAndKey(passphrase) {
+    const enc = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveBits', 'deriveKey']);
+    const aesKeyResult = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: enc.encode(KEY_SALT), iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      baseKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+    );
+    const roomBits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: enc.encode(ROOM_SALT), iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+      baseKey, 128
+    );
+    const roomIdResult = Array.from(new Uint8Array(roomBits)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return { aesKey: aesKeyResult, roomId: roomIdResult };
+  }
+
+  async function encryptPayload(key, obj) {
+    const iv = crypto.getRandomValues(new Uint8Array(12)); // must be unique per message, unlike the fixed salts above
+    const enc = new TextEncoder();
+    const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(obj)));
+    return { iv: b64FromBytes(iv), data: b64FromBytes(new Uint8Array(cipherBuf)) };
+  }
+
+  async function decryptPayload(key, payload) {
+    try {
+      const iv = bytesFromB64(payload.iv);
+      const data = bytesFromB64(payload.data);
+      const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+      return JSON.parse(new TextDecoder().decode(plainBuf));
+    } catch {
+      return null;
+    }
+  }
+
+  // --- Firebase wiring ---
+  function initFirebase(config) {
+    if (firebaseApp) return;
+    firebaseApp = firebase.initializeApp(config);
+    db = firebase.database();
+  }
+
+  function roomRef() { return db.ref('rooms/' + roomId); }
+
+  function listenChannels() {
+    roomRef().child('channels').on('value', async (snap) => {
+      const val = snap.val() || {};
+      const ids = Object.keys(val);
+      if (ids.length === 0) {
+        createChannel('general');
+        return;
+      }
+      const entries = await Promise.all(ids.map(async (id) => {
+        const decoded = await decryptPayload(aesKey, val[id]);
+        return { id, name: decoded ? decoded.name : '🔒 unknown' };
+      }));
+      entries.sort((a, b) => a.name.localeCompare(b.name));
+      lastChannelEntries = entries;
+      renderChannelList(entries);
+      if (!currentChannelId || !entries.some(e => e.id === currentChannelId)) {
+        selectChannel(entries[0].id, entries[0].name);
+      }
+    });
+  }
+
+  async function createChannel(name) {
+    const payload = await encryptPayload(aesKey, { name });
+    const ref = roomRef().child('channels').push();
+    await ref.set({ ...payload, createdAt: firebase.database.ServerValue.TIMESTAMP });
+  }
+
+  function deleteChannel(channelId) {
+    if (!confirm('Delete this channel and all its messages?')) return;
+    roomRef().child('channels').child(channelId).remove();
+  }
+
+  function renderChannelList(entries) {
+    channelList.innerHTML = entries.map(e => `
+      <div class="channel-row ${e.id === currentChannelId ? 'active' : ''}" data-id="${e.id}">
+        <span class="channel-name"><i class="fa-solid fa-hashtag" style="font-size:11px;"></i> ${escapeHtml(e.name)}</span>
+        <button class="del-channel" data-id="${e.id}" title="Delete channel">&times;</button>
+      </div>
+    `).join('');
+    channelList.querySelectorAll('.channel-row').forEach(el => {
+      el.addEventListener('click', (ev) => {
+        if (ev.target.closest('button')) return;
+        const entry = entries.find(e => e.id === el.dataset.id);
+        if (entry) selectChannel(entry.id, entry.name);
+      });
+    });
+    channelList.querySelectorAll('.del-channel').forEach(el => {
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); deleteChannel(el.dataset.id); });
+    });
+  }
+
+  function selectChannel(channelId, name) {
+    if (messagesRef) messagesRef.off();
+    if (typingRef) typingRef.off();
+    currentChannelId = channelId;
+    channelHeaderName.textContent = name || '';
+    messageList.innerHTML = '';
+    typingIndicator.textContent = '';
+    renderedMessageIds.clear();
+    listenMessages(channelId);
+    listenTyping(channelId);
+    renderChannelList(lastChannelEntries);
+  }
+
+  // --- Messages ---
+  function listenMessages(channelId) {
+    messagesRef = roomRef().child('channels').child(channelId).child('messages').limitToLast(200);
+    messagesRef.on('child_added', async (snap) => {
+      const enc = snap.val();
+      const decoded = await decryptPayload(aesKey, enc);
+      appendMessage(snap.key, decoded, enc.ts);
+    });
+  }
+
+  function appendMessage(id, decoded, ts) {
+    if (renderedMessageIds.has(id)) return;
+    renderedMessageIds.add(id);
+    const row = document.createElement('div');
+    row.className = 'msg-row';
+    const time = ts ? new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+    if (decoded) {
+      row.innerHTML = `<span class="msg-nick">${escapeHtml(decoded.nick)}</span><span class="msg-time">${time}</span><div class="msg-text">${escapeHtml(decoded.text)}</div>`;
+    } else {
+      row.innerHTML = `<span class="msg-nick">🔒</span><span class="msg-time">${time}</span><div class="msg-text msg-broken">Undecryptable message</div>`;
+    }
+    messageList.appendChild(row);
+    messageList.scrollTop = messageList.scrollHeight;
+  }
+
+  async function sendMessage(text) {
+    if (!text.trim() || !currentChannelId) return;
+    const payload = await encryptPayload(aesKey, { nick: nickname, text: text.trim() });
+    await roomRef().child('channels').child(currentChannelId).child('messages').push().set({
+      ...payload, ts: firebase.database.ServerValue.TIMESTAMP,
+    });
+    clearTyping();
+  }
+
+  // --- Presence ---
+  function setupPresence() {
+    db.ref('.info/connected').on('value', async (snap) => {
+      if (snap.val() !== true) return;
+      presenceRef = roomRef().child('presence').child(sessionId);
+      presenceRef.onDisconnect().remove();
+      const payload = await encryptPayload(aesKey, { nick: nickname });
+      presenceRef.set(payload);
+    });
+
+    roomRef().child('presence').on('value', async (snap) => {
+      const val = snap.val() || {};
+      const entries = await Promise.all(Object.entries(val).map(async ([id, enc]) => {
+        const decoded = await decryptPayload(aesKey, enc);
+        return { id, nick: decoded ? decoded.nick : '🔒' };
+      }));
+      renderMemberList(entries);
+    });
+  }
+
+  function renderMemberList(entries) {
+    memberList.innerHTML = entries.length
+      ? entries.map(e => `<div class="member-row"><span class="member-dot"></span><span>${escapeHtml(e.nick)}</span></div>`).join('')
+      : '<div style="font-size:12px;color:var(--text-muted);">Nobody else here</div>';
+  }
+
+  // --- Typing indicator ---
+  function listenTyping(channelId) {
+    typingRef = roomRef().child('channels').child(channelId).child('typing');
+    typingRef.on('value', async (snap) => {
+      const val = snap.val() || {};
+      const now = Date.now();
+      const active = Object.entries(val).filter(([id, v]) => id !== sessionId && v.ts && now - v.ts < TYPING_TTL_MS);
+      const names = await Promise.all(active.map(async ([id, enc]) => {
+        const decoded = await decryptPayload(aesKey, enc);
+        return decoded ? decoded.nick : null;
+      }));
+      renderTypingIndicator(names.filter(Boolean));
+    });
+  }
+
+  function renderTypingIndicator(names) {
+    if (names.length === 0) { typingIndicator.textContent = ''; return; }
+    const list = names.map(escapeHtml).join(', ');
+    typingIndicator.textContent = `${list} ${names.length === 1 ? 'is' : 'are'} typing...`;
+  }
+
+  async function markTyping() {
+    if (!currentChannelId) return;
+    const ref = roomRef().child('channels').child(currentChannelId).child('typing').child(sessionId);
+    ref.onDisconnect().remove();
+    const payload = await encryptPayload(aesKey, { nick: nickname });
+    await ref.set({ ...payload, ts: firebase.database.ServerValue.TIMESTAMP });
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(clearTyping, 4000);
+  }
+
+  function clearTyping() {
+    clearTimeout(typingTimer);
+    if (!currentChannelId) return;
+    roomRef().child('channels').child(currentChannelId).child('typing').child(sessionId).remove();
+  }
+
+  // --- Screen switching ---
+  function showSetupScreen() {
+    setupScreen.hidden = false;
+    joinScreen.hidden = true;
+    chatScreen.hidden = true;
+  }
+  function showJoinScreen() {
+    setupScreen.hidden = true;
+    joinScreen.hidden = false;
+    chatScreen.hidden = true;
+  }
+  function showChatScreen() {
+    setupScreen.hidden = true;
+    joinScreen.hidden = true;
+    chatScreen.hidden = false;
+    whoAmI.textContent = nickname;
+  }
+
+  async function joinRoom(passphrase, nick) {
+    nickname = nick;
+    sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    const derived = await deriveRoomAndKey(passphrase);
+    aesKey = derived.aesKey;
+    roomId = derived.roomId;
+    showChatScreen();
+    listenChannels();
+    setupPresence();
+  }
+
+  // --- Event wiring ---
+  copyRulesBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(RULES_JSON).then(() => showToast('Rules copied')).catch(() => showToast('Clipboard blocked', true));
+  });
+
+  setupForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const parsed = parseFirebaseConfigInput(configInput.value);
+    if (!parsed) { showToast('Could not parse that config (needs databaseURL + apiKey).', true); return; }
+    saveConfig(parsed);
+    initFirebase(parsed);
+    showJoinScreen();
+  });
+
+  joinForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const passphrase = joinPassphrase.value;
+    const nick = joinNickname.value.trim();
+    if (!passphrase || !nick) return;
+    saveSession({ passphrase, nickname: nick });
+    await joinRoom(passphrase, nick);
+  });
+
+  changeProjectBtn.addEventListener('click', () => {
+    if (!confirm('Switch to a different Firebase project? This clears the saved config (and your session) on this device only.')) return;
+    clearConfig();
+    clearSession();
+    location.reload();
+  });
+
+  invitePassphraseBtn.addEventListener('click', () => {
+    const session = loadSession();
+    passphraseDisplay.value = session ? session.passphrase : '';
+    passphraseModal.hidden = false;
+    passphraseDisplay.select();
+  });
+  closePassphraseModalBtn.addEventListener('click', () => { passphraseModal.hidden = true; });
+  copyPassphraseBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(passphraseDisplay.value)
+      .then(() => showToast('Passphrase copied'))
+      .catch(() => showToast('Clipboard blocked', true));
+  });
+
+  leaveBtn.addEventListener('click', () => {
+    if (!confirm('Leave this room? You can rejoin with the same passphrase anytime.')) return;
+    if (presenceRef) presenceRef.remove();
+    clearTyping();
+    clearSession();
+    location.reload();
+  });
+
+  addChannelBtn.addEventListener('click', () => {
+    const name = newChannelName.value.trim();
+    if (!name) return;
+    createChannel(name);
+    newChannelName.value = '';
+  });
+  newChannelName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addChannelBtn.click(); });
+
+  messageInput.addEventListener('input', () => { markTyping(); });
+  messageInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const text = messageInput.value;
+      messageInput.value = '';
+      sendMessage(text);
+    }
+  });
+
+  // --- Init ---
+  async function init() {
+    if (!window.crypto || !window.crypto.subtle) {
+      document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#fff;">This browser/context does not support the Web Crypto API (crypto.subtle), which this chat needs for encryption. Try a modern browser.</div>';
+      return;
+    }
+    const config = loadConfig();
+    if (!config) { showSetupScreen(); return; }
+    initFirebase(config);
+    const session = loadSession();
+    if (!session) { showJoinScreen(); return; }
+    await joinRoom(session.passphrase, session.nickname);
+  }
+
+  init();
+</script>
+</body>
+</html>

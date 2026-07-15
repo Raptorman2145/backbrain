@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>What's Next?</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+    max-width: 640px;
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 14px; }
+
+  #syncBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+  }
+  #syncBadge.synced { color: #22c55e; border-color: rgba(34, 197, 94, 0.4); background: rgba(34, 197, 94, 0.08); }
+  #syncNote { font-size: 12px; color: var(--text-muted); margin: -12px 0 20px; line-height: 1.6; }
+  #syncNote code { background: var(--surface); padding: 1px 5px; border-radius: 4px; }
+  #rulesBlock {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-family: monospace;
+    font-size: 11px;
+    white-space: pre;
+    overflow-x: auto;
+    margin: 8px 0 20px;
+    color: var(--text-muted);
+  }
+
+  #optionList { list-style: none; margin: 0 0 20px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .option-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .option-label { flex: 1; font-size: 14px; line-height: 1.4; }
+  .option-votes { font-size: 13px; color: var(--text-muted); min-width: 60px; text-align: right; }
+  .vote-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .vote-btn:hover { border-color: var(--accent-bg); }
+  .vote-btn.voted { background: var(--accent-bg); color: var(--accent-text); border-color: var(--accent-bg); }
+
+  #addForm { display: flex; gap: 8px; margin-bottom: 8px; }
+  #addInput {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  #addForm button {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <h1>What's Next?</h1>
+  <p class="sub">Upvote whatever you'd want to see added to the site — or suggest your own.</p>
+
+  <span id="syncBadge"><i class="fa-solid fa-circle-nodes"></i><span id="syncBadgeText">Checking sync status...</span></span>
+  <p id="syncNote" hidden></p>
+  <pre id="rulesBlock"></pre>
+
+  <ul id="optionList"></ul>
+
+  <form id="addForm">
+    <input type="text" id="addInput" placeholder="Suggest something..." autocomplete="off" maxlength="140">
+    <button type="submit">Add</button>
+  </form>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    // --- Seed suggestions - fixed IDs/labels live in code, only vote counts
+    // (and anything someone adds live) need to actually be stored anywhere.
+    const SEED_OPTIONS = [
+      { id: "auto-seasonal", label: "Auto-seasonal themes (Halloween in Oct, Christmas in Dec, etc.)" },
+      { id: "theme-unlocks", label: "Unlockable themes - find or earn them instead of everything open" },
+      { id: "cursor-trails", label: "Optional cursor trail effects, styled per theme" },
+      { id: "pomodoro", label: "Pomodoro / stopwatch timer tool" },
+      { id: "8ball", label: "8-ball / decision maker tool" },
+      { id: "guestbook", label: "Homepage guestbook / shoutbox" },
+      { id: "birthdays", label: "Birthday tracker on the Team page" },
+      { id: "minigames", label: "Original mini-games plus a site-wide leaderboard" },
+      { id: "placeholder-pages", label: "Replace the blank \"coming soon\" tabs with a real placeholder page" },
+      { id: "random-page", label: "Random Page button" },
+      { id: "shortcuts-help", label: "Keyboard shortcuts help panel" },
+    ];
+
+    const VOTER_KEY = "addnext_voter_id";
+    const LOCAL_KEY = "addnext_poll_local";
+    const POLL_PATH = "polls/addnext";
+
+    const optionListEl = document.getElementById("optionList");
+    const addForm = document.getElementById("addForm");
+    const addInput = document.getElementById("addInput");
+    const syncBadge = document.getElementById("syncBadge");
+    const syncBadgeText = document.getElementById("syncBadgeText");
+    const syncNote = document.getElementById("syncNote");
+    const rulesBlock = document.getElementById("rulesBlock");
+
+    // Single source of truth for "how do votes/adds currently behave" -
+    // avoids the earlier design's bug where a failed sync attempt could
+    // leave BOTH a synced-mode and a local-mode click/submit handler bound
+    // to the same persistent elements at once (double-submits on fallback).
+    // Vote buttons use event delegation on optionListEl instead of binding
+    // fresh listeners per render, for the same reason: one listener, always
+    // consulting current state at click-time rather than baked in per-mode.
+    const session = { mode: "local", pollRef: null, myId: "local" };
+
+    function voterId() {
+      let id = localStorage.getItem(VOTER_KEY);
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(VOTER_KEY, id);
+      }
+      return id;
+    }
+
+    function localState() {
+      return JSON.parse(localStorage.getItem(LOCAL_KEY) || "null") || { custom: [], voted: [] };
+    }
+    function saveLocalState(state) {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
+    }
+
+    function render(options) {
+      const sorted = [...options].sort((a, b) => b.votes - a.votes);
+      optionListEl.innerHTML = sorted.map(opt => {
+        const voted = opt.voters.includes(session.myId);
+        return `
+          <li class="option-row">
+            <span class="option-label">${opt.label}</span>
+            <span class="option-votes">${opt.votes} vote${opt.votes === 1 ? "" : "s"}</span>
+            <button type="button" class="vote-btn${voted ? " voted" : ""}" data-id="${opt.id}" data-voted="${voted}">
+              <i class="fa-solid fa-arrow-up"></i> ${voted ? "Voted" : "Vote"}
+            </button>
+          </li>
+        `;
+      }).join("");
+    }
+
+    function renderLocal() {
+      const state = localState();
+      const all = [...SEED_OPTIONS, ...state.custom];
+      const options = all.map(opt => ({
+        ...opt,
+        votes: state.voted.includes(opt.id) ? 1 : 0,
+        voters: state.voted.includes(opt.id) ? ["local"] : [],
+      }));
+      render(options);
+    }
+
+    function switchToLocalMode(reasonHtml) {
+      session.mode = "local";
+      session.pollRef = null;
+      session.myId = "local";
+      syncBadge.classList.remove("synced");
+      syncBadgeText.textContent = reasonHtml ? "Firebase connected, but not authorized" : "Local only";
+      syncNote.hidden = false;
+      syncNote.innerHTML = reasonHtml || `Results shown are just from this browser, not the whole group — nobody else sees your votes and you don't see theirs. To make this a real shared poll, set up Chat's Firebase connection first (Tools &rarr; Discord), then reload this page.`;
+      if (!reasonHtml) rulesBlock.style.display = "none";
+      renderLocal();
+    }
+
+    // --- Synced mode: only engages if Chat's Firebase project is already
+    // configured in this browser (same chat_firebase_config key Chat itself
+    // uses). Votes and custom suggestions live at polls/addnext in that
+    // same Realtime Database, separate from Chat's own rooms/ data. Chat's
+    // shipped security rules only open rooms/$roomId, so writes here fail
+    // with PERMISSION_DENIED until polls/addnext is opened up too - the
+    // exact rule to add gets shown inline if that happens, then this falls
+    // back to local mode rather than leaving the page stuck.
+    function showPermissionHelp() {
+      switchToLocalMode(`Chat's Firebase rules only open up the <code>rooms/</code> path, not <code>polls/</code>. Add this to your Realtime Database rules to let this poll sync for everyone:`);
+      rulesBlock.style.display = "block";
+      rulesBlock.textContent = JSON.stringify({
+        rules: {
+          rooms: { "$roomId": { ".read": true, ".write": true } },
+          polls: { "$pollId": { ".read": true, ".write": true } },
+        },
+      }, null, 2);
+    }
+
+    function trySyncedMode(config) {
+      window.BackbrainFirebase.loadSdk().then(() => {
+        let db;
+        try {
+          db = window.BackbrainFirebase.init(config);
+        } catch {
+          switchToLocalMode();
+          return;
+        }
+
+        session.myId = voterId();
+        session.pollRef = db.ref(POLL_PATH);
+        session.mode = "connecting";
+
+        session.pollRef.on("value", snap => {
+          // A late update arriving after a permission error already forced
+          // a fallback shouldn't silently flip the UI back into synced mode.
+          if (session.mode !== "synced" && session.mode !== "connecting") return;
+          session.mode = "synced";
+          const val = snap.val() || {};
+          const votesByOption = val.votes || {};
+          const customList = val.custom ? Object.values(val.custom) : [];
+          const all = [...SEED_OPTIONS, ...customList];
+          const options = all.map(opt => {
+            const voters = votesByOption[opt.id] ? Object.keys(votesByOption[opt.id]) : [];
+            return { ...opt, votes: voters.length, voters };
+          });
+
+          syncBadge.classList.add("synced");
+          syncBadgeText.textContent = "Synced with the group";
+          syncNote.hidden = true;
+          render(options);
+        }, err => {
+          if (/permission/i.test(err && (err.message || err.code) || "")) showPermissionHelp();
+          else switchToLocalMode();
+        });
+      }).catch(() => switchToLocalMode());
+    }
+
+    // One delegated handler covers every render, in either mode.
+    optionListEl.addEventListener("click", e => {
+      const btn = e.target.closest(".vote-btn");
+      if (!btn) return;
+      const id = btn.dataset.id;
+      const alreadyVoted = btn.dataset.voted === "true";
+
+      if (session.mode === "synced" && session.pollRef) {
+        const voteRef = session.pollRef.child(`votes/${id}/${session.myId}`);
+        (alreadyVoted ? voteRef.remove() : voteRef.set(true)).catch(showPermissionHelp);
+      } else {
+        const state = localState();
+        const i = state.voted.indexOf(id);
+        if (i === -1) state.voted.push(id); else state.voted.splice(i, 1);
+        saveLocalState(state);
+        renderLocal();
+      }
+    });
+
+    addForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const label = addInput.value.trim();
+      if (!label) return;
+
+      if (session.mode === "synced" && session.pollRef) {
+        const id = "custom-" + crypto.randomUUID();
+        session.pollRef.child(`custom/${id}`).set({ id, label })
+          .then(() => { addInput.value = ""; })
+          .catch(showPermissionHelp);
+      } else {
+        const state = localState();
+        state.custom.push({ id: "custom-" + crypto.randomUUID(), label });
+        saveLocalState(state);
+        addInput.value = "";
+        renderLocal();
+      }
+    });
+
+    const savedConfig = window.BackbrainFirebase.getConfig();
+    if (savedConfig) trySyncedMode(savedConfig);
+    else switchToLocalMode();
+  </script>
+</body>
+</html>

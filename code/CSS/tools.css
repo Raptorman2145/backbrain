@@ -1,0 +1,27 @@
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: system-ui, sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 24px clamp(16px, 4vw, 48px);
+  background: var(--bg);
+  color: var(--text);
+}
+h1 { margin-bottom: 4px; }
+p.sub { color: var(--text-muted); margin: 0; }
+
+.card-media.tool-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  color: var(--text-muted);
+  background: var(--card-bg);
+  animation: none;
+}

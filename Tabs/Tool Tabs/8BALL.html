@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Magic 8-Ball</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  #questionForm {
+    display: flex;
+    gap: 8px;
+    max-width: 420px;
+    margin: 0 auto 28px;
+  }
+  #questionInput {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+  }
+  #questionForm button {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+
+  .ball-wrap { display: flex; justify-content: center; margin-bottom: 20px; }
+  #ball {
+    position: relative;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #3a3a3a 0%, #0a0a0a 55%, #000 100%);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset -10px -10px 30px rgba(0, 0, 0, 0.6), inset 8px 8px 20px rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.08s ease;
+  }
+  #ball.shaking { animation: shake 0.55s ease; }
+  @keyframes shake {
+    0%, 100% { transform: rotate(0deg) translateX(0); }
+    15% { transform: rotate(-8deg) translateX(-6px); }
+    30% { transform: rotate(7deg) translateX(6px); }
+    45% { transform: rotate(-6deg) translateX(-5px); }
+    60% { transform: rotate(5deg) translateX(4px); }
+    75% { transform: rotate(-3deg) translateX(-2px); }
+  }
+  .ball-window {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 130px;
+    height: 130px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #1a3a6e 0%, #0a1a3a 70%, #061024 100%);
+    border: 3px solid #1a1a1a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.6);
+  }
+  #ballAnswer {
+    color: #eaf2ff;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.35;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  #ballAnswer.visible { opacity: 1; }
+
+  #hint { color: var(--text-muted); font-size: 12px; margin-bottom: 20px; }
+
+  #historyList { list-style: none; margin: 0 auto; padding: 0; max-width: 380px; text-align: left; }
+  #historyList li {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  #historyList .h-q { color: var(--text-muted); }
+  #historyList .h-a { color: var(--accent-bg); font-weight: 600; }
+</style>
+</head>
+<body>
+  <h1>Magic 8-Ball</h1>
+  <p class="sub">Ask a yes-or-no question, then shake it.</p>
+
+  <form id="questionForm">
+    <input type="text" id="questionInput" placeholder="Will it...?" autocomplete="off" maxlength="120">
+    <button type="submit">Ask</button>
+  </form>
+
+  <div class="ball-wrap">
+    <div id="ball">
+      <div class="ball-window">
+        <div id="ballAnswer"></div>
+      </div>
+    </div>
+  </div>
+  <p id="hint">Click the ball for an answer.</p>
+
+  <ul id="historyList"></ul>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const ANSWERS = [
+      "It is certain.", "It is decidedly so.", "Without a doubt.", "Yes, definitely.",
+      "You may rely on it.", "As I see it, yes.", "Most likely.", "Outlook good.",
+      "Yes.", "Signs point to yes.",
+      "Reply hazy, try again.", "Ask again later.", "Better not tell you now.",
+      "Cannot predict now.", "Concentrate and ask again.",
+      "Don't count on it.", "My reply is no.", "My sources say no.",
+      "Outlook not so good.", "Very doubtful.",
+    ];
+
+    const ball = document.getElementById("ball");
+    const ballAnswer = document.getElementById("ballAnswer");
+    const hint = document.getElementById("hint");
+    const questionForm = document.getElementById("questionForm");
+    const questionInput = document.getElementById("questionInput");
+    const historyList = document.getElementById("historyList");
+
+    let shaking = false;
+    let history = [];
+
+    // Same rejection-sampled CSPRNG approach as the site's other random
+    // tools (Dice Roller, Wheel Spinner) rather than Math.random().
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function renderHistory() {
+      historyList.innerHTML = history.slice(0, 10).map(entry => `
+        <li>
+          ${entry.question ? `<div class="h-q">${entry.question}</div>` : ""}
+          <div class="h-a">${entry.answer}</div>
+        </li>
+      `).join("");
+    }
+
+    function shake() {
+      if (shaking) return;
+      shaking = true;
+      ballAnswer.classList.remove("visible");
+      ball.classList.add("shaking");
+      hint.textContent = "...";
+
+      setTimeout(() => {
+        ball.classList.remove("shaking");
+        const answer = ANSWERS[secureRandomInt(ANSWERS.length)];
+        ballAnswer.textContent = answer;
+        ballAnswer.classList.add("visible");
+        hint.textContent = "Click the ball to ask again.";
+        history.unshift({ question: questionInput.value.trim(), answer });
+        renderHistory();
+        shaking = false;
+      }, 550);
+    }
+
+    ball.addEventListener("click", shake);
+    questionForm.addEventListener("submit", e => {
+      e.preventDefault();
+      shake();
+    });
+  </script>
+</body>
+</html>

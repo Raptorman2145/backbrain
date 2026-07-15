@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Whiteboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 4px; }
+  .local-note { color: var(--text-muted); font-size: 12px; margin: 0 0 18px; line-height: 1.6; }
+  .local-note code { background: var(--surface); padding: 1px 5px; border-radius: 4px; }
+
+  .board-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    font-size: 13px;
+  }
+  .board-bar i.fa-tower-broadcast { color: #22c55e; }
+  .board-bar-name { font-weight: 700; flex: 1; }
+  .board-bar-presence { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--text-muted); }
+  .presence-chip { display: inline-flex; align-items: center; gap: 4px; }
+  .presence-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .board-bar button {
+    padding: 7px 12px;
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .board-bar button:hover { border-color: var(--accent-bg); }
+
+  .landing {
+    max-width: 480px;
+    padding: 20px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .landing h2 { font-size: 15px; margin: 0 0 6px; }
+  .landing p { color: var(--text-muted); font-size: 13px; margin: 0 0 14px; line-height: 1.5; }
+  .landing-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .landing-row input {
+    flex: 1;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    color: var(--text);
+  }
+  .landing button {
+    padding: 9px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+  }
+  #createBoardBtn { background: var(--accent-bg); color: var(--accent-text); width: 100%; margin-bottom: 14px; }
+  #joinBoardBtn { background: var(--surface-alt); color: var(--text); border: 1px solid var(--border-strong) !important; }
+  .landing-divider { text-align: center; color: var(--text-muted); font-size: 11px; margin: 4px 0 12px; }
+  #useLocalBtn {
+    background: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 0;
+    text-decoration: underline;
+  }
+
+  .board-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .tool-group { display: flex; align-items: center; gap: 8px; }
+  .tool-group label { font-size: 12px; color: var(--text-muted); }
+
+  .swatch-row { display: flex; gap: 5px; }
+  .swatch {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    padding: 0;
+  }
+  .swatch.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent-bg); }
+  #customColor { width: 26px; height: 26px; padding: 0; border: none; border-radius: 50%; cursor: pointer; background: none; }
+
+  #brushSize { width: 100px; accent-color: var(--accent-bg); }
+  #brushSizeLabel { font-size: 12px; color: var(--text-muted); min-width: 32px; }
+
+  .board-toolbar button {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .board-toolbar button:hover { border-color: var(--accent-bg); }
+  .board-toolbar button.active { background: var(--accent-bg); color: var(--accent-text); border-color: var(--accent-bg); }
+  .board-toolbar button:disabled { opacity: 0.4; cursor: default; }
+
+  .board-wrap {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-strong);
+    touch-action: none;
+    max-width: 100%;
+  }
+  #board { display: block; width: 100%; height: auto; background: #ffffff; cursor: crosshair; }
+</style>
+</head>
+<body>
+  <h1>Whiteboard</h1>
+  <p class="sub">Doodle, jot a diagram, whatever.</p>
+  <p class="local-note" id="localNote" hidden></p>
+
+  <div class="board-bar" id="boardBar" hidden>
+    <i class="fa-solid fa-tower-broadcast"></i>
+    <span class="board-bar-name">Shared board — everyone with the link sees this live</span>
+    <div class="board-bar-presence" id="presenceList"></div>
+    <button type="button" id="inviteBtn"><i class="fa-solid fa-link"></i> Copy Invite Link</button>
+    <button type="button" id="leaveBoardBtn">Leave</button>
+  </div>
+
+  <div class="landing" id="landingScreen" hidden>
+    <h2>Draw together</h2>
+    <p>Start a shared board and send the invite link to whoever you want drawing with you — everyone who opens it sees the same board update live.</p>
+    <button type="button" id="createBoardBtn"><i class="fa-solid fa-tower-broadcast"></i> Start a Shared Board</button>
+    <div class="landing-divider">— or —</div>
+    <div class="landing-row">
+      <input type="text" id="joinBoardInput" placeholder="Paste an invite link or board code" autocomplete="off">
+      <button type="button" id="joinBoardBtn">Join</button>
+    </div>
+    <button type="button" id="useLocalBtn">Just use it locally instead, no sharing</button>
+  </div>
+
+  <div class="board-toolbar">
+    <div class="tool-group">
+      <button type="button" id="penBtn" class="active" title="Pen"><i class="fa-solid fa-pen"></i></button>
+      <button type="button" id="eraserBtn" title="Eraser"><i class="fa-solid fa-eraser"></i></button>
+    </div>
+
+    <div class="tool-group swatch-row" id="swatchRow"></div>
+    <div class="tool-group">
+      <input type="color" id="customColor" value="#e64848" title="Custom color">
+    </div>
+
+    <div class="tool-group">
+      <label for="brushSize">Size</label>
+      <input type="range" id="brushSize" min="1" max="40" value="4">
+      <span id="brushSizeLabel">4px</span>
+    </div>
+
+    <div class="tool-group">
+      <button type="button" id="undoBtn" title="Undo"><i class="fa-solid fa-rotate-left"></i> Undo</button>
+      <button type="button" id="clearBtn" title="Clear everything">Clear</button>
+      <button type="button" id="saveBtn" title="Download as PNG"><i class="fa-solid fa-download"></i> Save PNG</button>
+    </div>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board" width="1200" height="700"></canvas>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const STORAGE_KEY = "whiteboard_drawing";
+    const HISTORY_LIMIT = 20;
+    const BOARD_PARAM = "board";
+
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const penBtn = document.getElementById("penBtn");
+    const eraserBtn = document.getElementById("eraserBtn");
+    const swatchRow = document.getElementById("swatchRow");
+    const customColor = document.getElementById("customColor");
+    const brushSize = document.getElementById("brushSize");
+    const brushSizeLabel = document.getElementById("brushSizeLabel");
+    const undoBtn = document.getElementById("undoBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const saveBtn = document.getElementById("saveBtn");
+    const localNote = document.getElementById("localNote");
+    const boardBar = document.getElementById("boardBar");
+    const inviteBtn = document.getElementById("inviteBtn");
+    const leaveBoardBtn = document.getElementById("leaveBoardBtn");
+    const landingScreen = document.getElementById("landingScreen");
+    const createBoardBtn = document.getElementById("createBoardBtn");
+    const joinBoardInput = document.getElementById("joinBoardInput");
+    const joinBoardBtn = document.getElementById("joinBoardBtn");
+    const useLocalBtn = document.getElementById("useLocalBtn");
+    const presenceList = document.getElementById("presenceList");
+
+    const SWATCHES = ["#14151a", "#e64848", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899"];
+    let color = SWATCHES[0];
+    let brushMode = "pen"; // "pen" | "eraser" - named to avoid clashing with session.mode below
+    let drawing = false;
+    let lastPoint = null;
+    let history = [];
+
+    // --- Sharing session state. "local" = today's original single-device
+    // board, unchanged. "shared" = a Firebase Realtime Database board that
+    // streams every stroke segment live to whoever else has the same
+    // board's invite link open, reusing Chat's chat_firebase_config so
+    // there's no separate setup step - if the group already has Chat
+    // working, sharing a whiteboard just works too. If Chat was never set
+    // up, this whole feature quietly stays unavailable and the tool
+    // behaves exactly like it did before (single-device, local save only).
+    const session = { mode: "local", boardRef: null, presenceRef: null, connectedRef: null };
+
+    // --- Presence identity ---
+    // Whiteboard has no nickname flow like Chat does, so identity here is
+    // auto-generated and anonymous: a name+color persisted per-browser (so
+    // it's stable across reloads, like Chat's saved nickname) plus a fresh
+    // per-tab sessionId (so two tabs of the same browser still show up as
+    // two separate presences, matching how Chat's sessionId works).
+    const ARTIST_KEY = "whiteboard_artist_identity";
+    const ARTIST_ADJECTIVES = ["Sketchy", "Bold", "Quiet", "Swift", "Doodly", "Curious", "Clever", "Bright", "Fuzzy", "Nimble"];
+    const ARTIST_ANIMALS = ["Fox", "Otter", "Heron", "Badger", "Lynx", "Finch", "Wren", "Mole", "Newt", "Ibis"];
+    const ARTIST_COLORS = ["#e64848", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
+
+    function randomArtistIdentity() {
+      const pick = list => list[Math.floor(Math.random() * list.length)];
+      return { name: `${pick(ARTIST_ADJECTIVES)} ${pick(ARTIST_ANIMALS)}`, color: pick(ARTIST_COLORS) };
+    }
+
+    let artistIdentity;
+    try { artistIdentity = JSON.parse(localStorage.getItem(ARTIST_KEY)); } catch { artistIdentity = null; }
+    if (!artistIdentity || !artistIdentity.name || !artistIdentity.color) {
+      artistIdentity = randomArtistIdentity();
+      localStorage.setItem(ARTIST_KEY, JSON.stringify(artistIdentity));
+    }
+    const sessionId = crypto.randomUUID();
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function renderPresence(others) {
+      presenceList.innerHTML = others.length
+        ? others.map(p => `<span class="presence-chip"><span class="presence-dot" style="background:${p.color}"></span>${escapeHtml(p.name)}</span>`).join("")
+        : `<span>Just you</span>`;
+    }
+
+    // db is the same firebase.database() instance across calls (init() is
+    // idempotent - see BackbrainFirebase in sidebar.js), so re-joining a
+    // board later reuses it rather than opening a second connection.
+    function setupPresence(db) {
+      const onConnected = snap => {
+        if (snap.val() !== true) return;
+        session.presenceRef = session.boardRef.child("presence").child(sessionId);
+        session.presenceRef.onDisconnect().remove();
+        session.presenceRef.set(artistIdentity);
+      };
+      session.connectedRef = db.ref(".info/connected");
+      session.connectedRef.on("value", onConnected);
+
+      session.boardRef.child("presence").on("value", snap => {
+        const val = snap.val() || {};
+        const others = Object.entries(val).filter(([id]) => id !== sessionId).map(([, v]) => v);
+        renderPresence(others);
+      });
+    }
+
+    function fillWhite() {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function drawSegment(seg) {
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = seg.erase ? "#ffffff" : seg.color;
+      ctx.lineWidth = seg.size;
+      ctx.beginPath();
+      ctx.moveTo(seg.x1, seg.y1);
+      ctx.lineTo(seg.x2, seg.y2);
+      ctx.stroke();
+    }
+
+    // ================= LOCAL (single-device) MODE =================
+    // Unchanged from before sharing existed: a snapshot-based undo history
+    // and one debounced localStorage save of the whole canvas as a PNG.
+    function pushHistory() {
+      history.push(canvas.toDataURL("image/png"));
+      if (history.length > HISTORY_LIMIT) history.shift();
+    }
+
+    let saveTimer = null;
+    function scheduleLocalSave() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        localStorage.setItem(STORAGE_KEY, canvas.toDataURL("image/png"));
+      }, 400);
+    }
+
+    function loadLocalSaved() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      fillWhite();
+      if (!saved) return;
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.src = saved;
+    }
+
+    undoBtn.addEventListener("click", () => {
+      if (session.mode === "shared") return; // see note in switchToSharedMode()
+      const previous = history.pop();
+      if (!previous) return;
+      const img = new Image();
+      img.onload = () => {
+        fillWhite();
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        scheduleLocalSave();
+      };
+      img.src = previous;
+    });
+
+    clearBtn.addEventListener("click", () => {
+      if (!confirm("Clear the whole board? This can't be undone.")) return;
+      if (session.mode === "shared") {
+        session.boardRef.child("strokes").remove();
+        session.boardRef.child("clearSignal").set(firebase.database.ServerValue.TIMESTAMP);
+      } else {
+        pushHistory();
+        fillWhite();
+        scheduleLocalSave();
+      }
+    });
+
+    saveBtn.addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.href = canvas.toDataURL("image/png");
+      a.download = "whiteboard.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    // ================= SHARED (multi-device) MODE =================
+    // Every stroke is streamed as a series of small line segments (not one
+    // record per full stroke) so other people watch it get drawn live
+    // instead of it popping in only once you lift the pen. A late joiner's
+    // canvas is reconstructed the same way: on.("child_added", ...) fires
+    // once for every segment already in the database (in order) before
+    // continuing to fire for new ones, so attaching that single listener
+    // handles both "replay everything so far" and "keep listening live"
+    // with no separate initial-load step needed.
+    //
+    // True per-user undo isn't implemented in shared mode: canvas pixels
+    // can't be selectively erased once something else may have been drawn
+    // on top, and reconstructing "everyone's canvas minus just my last
+    // stroke" would mean caching and replaying the full segment history
+    // client-side. Clear (which removes the whole board for everyone) is
+    // supported instead - the Undo button is disabled while shared.
+    // Firebase RTDB keys can't contain ". # $ [ ]" (or "/", but that's
+    // already meaningful as a path separator here) - crypto.randomUUID()
+    // never produces those, but someone hand-typing a "board code" into
+    // the join box could easily type a period or something else invalid,
+    // which would otherwise fail deep inside the Firebase SDK with a
+    // cryptic error instead of just working.
+    function sanitizeBoardId(id) {
+      return id.replace(/[.#$\[\]]/g, "_");
+    }
+
+    function boardIdFromInput(raw) {
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      try {
+        const url = new URL(trimmed, location.href);
+        const fromUrl = url.searchParams.get(BOARD_PARAM);
+        if (fromUrl) return sanitizeBoardId(fromUrl);
+      } catch { /* not a URL, fall through to treating it as a raw code */ }
+      return sanitizeBoardId(trimmed);
+    }
+
+    function inviteLinkFor(boardId) {
+      const url = new URL(location.href);
+      url.hash = "";
+      url.searchParams.set(BOARD_PARAM, boardId);
+      return url.href;
+    }
+
+    function switchToSharedMode(config, boardId) {
+      window.BackbrainFirebase.loadSdk().then(() => {
+        const db = window.BackbrainFirebase.init(config);
+
+        session.mode = "shared";
+        session.boardRef = db.ref("boards/" + encodeURIComponent(boardId));
+
+        const url = new URL(location.href);
+        url.searchParams.set(BOARD_PARAM, boardId);
+        history.replaceState(null, "", url);
+
+        landingScreen.hidden = true;
+        boardBar.hidden = false;
+        undoBtn.disabled = true;
+        undoBtn.title = "Undo isn't available on shared boards - use Clear instead";
+
+        fillWhite();
+        let lastClearSeen = null;
+        session.boardRef.child("clearSignal").on("value", snap => {
+          const val = snap.val();
+          if (val === null || val === lastClearSeen) return;
+          if (lastClearSeen !== null) fillWhite(); // skip the very first (initial) read so a board that was cleared in the past doesn't wipe a fresh replay-in-progress
+          lastClearSeen = val;
+        });
+        session.boardRef.child("strokes").on("child_added", snap => drawSegment(snap.val()));
+        setupPresence(db);
+      }).catch(() => {
+        alert("Couldn't load Firebase - check your connection and try again.");
+      });
+    }
+
+    function leaveSharedMode() {
+      // .off() on session.boardRef itself would NOT detach these - they're
+      // listeners on its child refs (different paths: boards/{id}/clearSignal
+      // and boards/{id}/strokes), which each need their own .off(). Getting
+      // this wrong means stale listeners from a left board keep firing and
+      // drawing onto whatever board you join next.
+      if (session.boardRef) {
+        session.boardRef.child("clearSignal").off();
+        session.boardRef.child("strokes").off();
+        session.boardRef.child("presence").off();
+      }
+      // onDisconnect().remove() only fires on an actual disconnect (tab
+      // close, network loss) - clicking Leave keeps the connection alive,
+      // so without this the presence entry would linger showing you as
+      // still on the board you just left.
+      if (session.presenceRef) { session.presenceRef.remove(); session.presenceRef = null; }
+      if (session.connectedRef) { session.connectedRef.off(); session.connectedRef = null; }
+      renderPresence([]);
+      session.mode = "local";
+      session.boardRef = null;
+      const url = new URL(location.href);
+      url.searchParams.delete(BOARD_PARAM);
+      history.replaceState(null, "", url);
+      boardBar.hidden = true;
+      undoBtn.disabled = false;
+      undoBtn.title = "Undo";
+      loadLocalSaved();
+      maybeShowLanding();
+    }
+
+    inviteBtn.addEventListener("click", () => {
+      const boardId = decodeURIComponent(session.boardRef.key);
+      navigator.clipboard.writeText(inviteLinkFor(boardId)).then(() => {
+        inviteBtn.innerHTML = `<i class="fa-solid fa-check"></i> Copied!`;
+        setTimeout(() => { inviteBtn.innerHTML = `<i class="fa-solid fa-link"></i> Copy Invite Link`; }, 1600);
+      });
+    });
+
+    leaveBoardBtn.addEventListener("click", leaveSharedMode);
+
+    let firebaseConfig = null;
+
+    createBoardBtn.addEventListener("click", () => {
+      switchToSharedMode(firebaseConfig, crypto.randomUUID());
+    });
+
+    joinBoardBtn.addEventListener("click", () => {
+      const id = boardIdFromInput(joinBoardInput.value);
+      if (!id) return;
+      switchToSharedMode(firebaseConfig, id);
+    });
+    joinBoardInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") joinBoardBtn.click();
+    });
+
+    useLocalBtn.addEventListener("click", () => {
+      landingScreen.hidden = true;
+      loadLocalSaved();
+    });
+
+    function maybeShowLanding() {
+      if (session.mode !== "local" || !firebaseConfig) return;
+      landingScreen.hidden = false;
+    }
+
+    // ================= Shared tool UI (pen/eraser/color/size) =================
+    function renderSwatches() {
+      swatchRow.innerHTML = SWATCHES.map(c => `
+        <button type="button" class="swatch${c === color && brushMode === "pen" ? " active" : ""}" style="background:${c}" data-color="${c}" aria-label="${c}"></button>
+      `).join("");
+      swatchRow.querySelectorAll(".swatch").forEach(btn => {
+        btn.addEventListener("click", () => {
+          color = btn.dataset.color;
+          setBrushMode("pen");
+        });
+      });
+    }
+
+    function setBrushMode(next) {
+      brushMode = next;
+      penBtn.classList.toggle("active", brushMode === "pen");
+      eraserBtn.classList.toggle("active", brushMode === "eraser");
+      renderSwatches();
+    }
+
+    penBtn.addEventListener("click", () => setBrushMode("pen"));
+    eraserBtn.addEventListener("click", () => setBrushMode("eraser"));
+
+    customColor.addEventListener("input", () => {
+      color = customColor.value;
+      setBrushMode("pen");
+    });
+
+    brushSize.addEventListener("input", () => {
+      brushSizeLabel.textContent = `${brushSize.value}px`;
+    });
+
+    function canvasPoint(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+    }
+
+    function strokeTo(point) {
+      const seg = {
+        x1: lastPoint.x, y1: lastPoint.y, x2: point.x, y2: point.y,
+        color, size: Number(brushSize.value) * (brushMode === "eraser" ? 2.5 : 1),
+        erase: brushMode === "eraser",
+      };
+      if (session.mode === "shared") {
+        // Drawn only once the write echoes back via child_added below -
+        // simpler and avoids double-drawing your own strokes than trying
+        // to draw locally AND reconcile with the synced copy.
+        session.boardRef.child("strokes").push(seg);
+      } else {
+        drawSegment(seg);
+      }
+      lastPoint = point;
+    }
+
+    canvas.addEventListener("pointerdown", e => {
+      canvas.setPointerCapture(e.pointerId);
+      if (session.mode !== "shared") pushHistory();
+      drawing = true;
+      lastPoint = canvasPoint(e);
+      // A single click/tap with no drag should still leave a dot.
+      strokeTo(lastPoint);
+    });
+
+    canvas.addEventListener("pointermove", e => {
+      if (!drawing) return;
+      strokeTo(canvasPoint(e));
+    });
+
+    function endStroke() {
+      if (!drawing) return;
+      drawing = false;
+      lastPoint = null;
+      if (session.mode !== "shared") scheduleLocalSave();
+    }
+    canvas.addEventListener("pointerup", endStroke);
+    canvas.addEventListener("pointerleave", endStroke);
+    canvas.addEventListener("pointercancel", endStroke);
+
+    // ================= Boot =================
+    renderSwatches();
+    firebaseConfig = window.BackbrainFirebase.getConfig();
+
+    if (!firebaseConfig) {
+      localNote.hidden = false;
+      localNote.textContent = "Saved to this browser only, not shared. To draw together with others, set up Chat's Firebase connection first (Tools → Discord), then come back here.";
+      loadLocalSaved();
+    } else {
+      const urlBoardId = new URL(location.href).searchParams.get(BOARD_PARAM);
+      if (urlBoardId) {
+        switchToSharedMode(firebaseConfig, urlBoardId);
+      } else {
+        maybeShowLanding();
+      }
+    }
+  </script>
+</body>
+</html>

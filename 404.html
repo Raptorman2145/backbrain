@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>404 - Not Found</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- Absolute (leading-slash) paths only on this page: serve.ps1 serves this
+     file's bytes for ANY missing URL, at any depth, so a relative path here
+     would resolve against whatever mistyped URL the visitor actually hit. -->
+<link rel="stylesheet" href="/code/CSS/shared.css">
+<link rel="stylesheet" href="/code/CSS/404.css">
+</head>
+<body>
+  <div class="notfound-box">
+    <div class="notfound-code">404</div>
+    <h1>Page not found</h1>
+    <p class="sub">Whatever you were looking for isn't here.</p>
+    <div class="notfound-actions">
+      <a class="notfound-btn primary" href="/index.html">Go Home</a>
+      <button type="button" class="notfound-btn" id="notfoundSearchBtn">Search (Ctrl+K)</button>
+    </div>
+  </div>
+
+  <script src="/code/General%20Code/sidebar.js"></script>
+  <script>
+    document.getElementById('notfoundSearchBtn').addEventListener('click', () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+    });
+  </script>
+</body>
+</html>

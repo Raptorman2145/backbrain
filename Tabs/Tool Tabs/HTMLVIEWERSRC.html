@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BackbrainHtml Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <style>
+        :root { --accent: #ff0000; --bg: #0d0d0d; --toolbar: #1a0000; --ai-primary: #4361ee; --error: #e63946; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; background: var(--bg); color: white; overflow: hidden; }
+
+        .toolbar { display: flex; gap: 12px; padding: 10px 15px; background: var(--toolbar); align-items: center; z-index: 100; border-bottom: 1px solid #330000; flex-wrap: wrap; }
+
+        button, .file-label {
+            position: relative;
+            display: flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; border: none; border-radius: 6px; cursor: pointer;
+            font-size: 16px; color: white;
+            transition: background 0.2s ease; background: #333;
+            flex-shrink: 0;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-text {
+            position: absolute; bottom: -35px; left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: #444; color: white; padding: 5px 10px;
+            border-radius: 4px; font-size: 11px; white-space: nowrap;
+            opacity: 0; pointer-events: none; transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); z-index: 1000;
+        }
+
+        button:hover .btn-text, .file-label:hover .btn-text { opacity: 1; transform: translateX(-50%) translateY(0); }
+        button:hover, .file-label:hover { background: #555; }
+        .btn-red { background: var(--accent); }
+        .btn-red:hover { background: #cc0000; }
+        .btn-blue { background: #3498db; }
+
+        #colorInput { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+
+        #search-panel { display: none; padding: 10px; background: #222; gap: 10px; border-bottom: 1px solid #444; align-items: center; }
+        #search-panel input { background: #000; color: #fff; border: 1px solid #555; padding: 5px; border-radius: 4px; outline: none; }
+
+        .info-bar { display: flex; justify-content: space-between; padding: 4px 15px; background: #000; font-size: 11px; color: #aaa; border-bottom: 1px solid #222; }
+
+        .container { display: flex; flex: 1; position: relative; overflow: hidden; }
+        .container.vertical { flex-direction: column; }
+
+        .editor-wrapper { position: relative; flex: 1; background: #151515; display: flex; min-width: 50px; min-height: 50px; }
+
+        .resizer {
+            background: #222; width: 8px; cursor: col-resize; z-index: 10;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s; touch-action: none;
+        }
+        .resizer:hover, .resizer.active { background: var(--ai-primary); }
+        .container.vertical .resizer { width: 100%; height: 8px; cursor: row-resize; }
+
+        .line-numbers { padding: 20px 10px; text-align: right; color: #444; font-family: monospace; font-size: 14px; line-height: 1.5; background: #111; user-select: none; min-width: 45px; overflow: hidden; }
+        .edit-area { position: relative; flex: 1; }
+        #editor, #highlighting-content {
+            margin: 0; padding: 20px; border: 0; width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            font-family: 'Fira Code', 'Consolas', monospace; font-size: 14px;
+            line-height: 1.5; tab-size: 4; white-space: pre; overflow: auto;
+        }
+        #editor { color: transparent; background: transparent; caret-color: #fff; z-index: 2; resize: none; outline: none; }
+        #highlighting-content { z-index: 1; pointer-events: none; }
+
+        .preview-container { flex: 1; background: #444; position: relative; display: flex; justify-content: center; min-width: 50px; min-height: 50px; overflow: auto; }
+        #viewer { width: 100%; height: 100%; border: none; background: #fff; transition: width 0.3s ease; }
+
+        /* Mobile Toggle Logic */
+        #viewer.mobile {
+            width: 375px !important;
+            height: 667px !important;
+            margin: 20px auto;
+            flex: none !important;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            border: 12px solid #222;
+            border-radius: 20px;
+        }
+
+        .dragging, .dragging #viewer { pointer-events: none; user-select: none; }
+
+        #toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #2ecc71; color: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; display: none; z-index: 2000; }
+        #toast.error { background: var(--error); }
+        .ai-fab { position: absolute; bottom: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: var(--ai-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; z-index: 1001; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #ai-sidebar { position: fixed; right: -320px; top: 0; width: 320px; height: 100%; background: #121225; transition: 0.3s; z-index: 1002; padding: 20px; display: flex; flex-direction: column; border-left: 1px solid #444; }
+        #ai-sidebar.open { right: 0; }
+    </style>
+</head>
+<body id="appBody">
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<div class="toolbar">
+    <label for="file-upload" class="file-label btn-red">
+        <i class="fas fa-folder-open"></i> <span class="btn-text">Load File</span>
+    </label>
+    <input type="file" id="file-upload" accept=".html,.htm" style="display:none">
+
+    <button class="btn-red" id="btn-save">
+        <i class="fas fa-save"></i> <span class="btn-text">Save File</span>
+    </button>
+
+    <button class="btn-blue" id="btn-duplicate">
+        <i class="fas fa-clone"></i> <span class="btn-text">Duplicate Editor</span>
+    </button>
+
+    <button class="btn-blue" id="btn-preview-tab">
+        <i class="fas fa-external-link-alt"></i> <span class="btn-text">Preview Tab</span>
+    </button>
+
+    <button id="btn-view-source" style="background: #6a1b9a;">
+        <i class="fas fa-code"></i> <span class="btn-text">View Embed Code</span>
+    </button>
+
+    <button id="btn-beautify">
+        <i class="fas fa-wand-magic-sparkles"></i> <span class="btn-text">Beautify</span>
+    </button>
+
+    <button id="btn-search">
+        <i class="fas fa-search"></i> <span class="btn-text">Search/Replace</span>
+    </button>
+
+    <button>
+        <i class="fa-solid fa-eye-dropper"></i>
+        <input type="color" id="colorInput">
+        <span class="btn-text">Color Picker</span>
+    </button>
+
+    <button id="btn-mobile">
+        <i class="fas fa-mobile-alt"></i> <span class="btn-text">Mobile Toggle</span>
+    </button>
+
+    <button id="btn-layout">
+        <i class="fas fa-columns"></i> <span class="btn-text">Layout Toggle</span>
+    </button>
+
+    <button id="btn-clear" style="background:#444">
+        <i class="fas fa-trash-alt"></i> <span class="btn-text">Clear Lab</span>
+    </button>
+</div>
+
+<div id="search-panel">
+    <input type="text" id="findTxt" placeholder="Find text...">
+    <input type="text" id="repTxt" placeholder="Replace with...">
+    <button id="btn-replace" style="width:auto; background:var(--ai-primary); padding:5px 15px;">Replace All</button>
+</div>
+
+<div class="info-bar">
+    <div id="error-id">Status: Data Ready</div>
+    <div id="stats">Chars: 0 | Words: 0</div>
+</div>
+
+<div class="container" id="mainBox">
+    <div class="editor-wrapper" id="editorPane" style="flex: 0 0 50%;">
+        <div class="line-numbers" id="lineBox">1</div>
+        <div class="edit-area">
+            <textarea id="editor" spellcheck="false"></textarea>
+            <pre id="highlighting-content"><code class="language-html" id="highlighting-body"></code></pre>
+        </div>
+        <div class="ai-fab" id="btn-toggle-ai"><i class="fas fa-robot"></i></div>
+    </div>
+
+    <div class="resizer" id="dragBar"></div>
+
+    <div class="preview-container" id="previewPane">
+        <iframe id="viewer" title="Live preview" sandbox="allow-scripts allow-modals allow-forms allow-popups"></iframe>
+    </div>
+</div>
+
+<div id="ai-sidebar">
+    <h3>AI Assistant</h3>
+    <input type="password" id="api-key" placeholder="Paste OpenAI Key" autocomplete="off" style="width:100%; padding:8px; background:#000; color:#fff; border:1px solid #444; margin-bottom:10px;">
+    <div id="ai-chat" style="flex:1; overflow:auto; font-size:12px; color:#ccc; background:rgba(0,0,0,0.2); padding:5px;">Ready for instructions.</div>
+    <textarea id="ai-prompt" style="width:100%; height:80px; background:#000; color:#fff; padding:8px; margin-top:10px;" placeholder="Describe changes..."></textarea>
+    <button id="btn-ask-ai" style="width:100%; background:var(--ai-primary); margin-top:10px; padding:12px;">Generate Code</button>
+    <button id="btn-close-ai" style="width:100%; background:#333; margin-top:5px;">Close</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+
+<script>
+(() => {
+    const STORAGE_KEY = 'web_lab_ultra_save';
+    const PREVIEW_DEBOUNCE_MS = 250;
+
+    const ed = document.getElementById('editor');
+    const display = document.getElementById('highlighting-body');
+    const viewer = document.getElementById('viewer');
+    const mainBox = document.getElementById('mainBox');
+    const dragBar = document.getElementById('dragBar');
+    const editorPane = document.getElementById('editorPane');
+    const appBody = document.getElementById('appBody');
+    const lineBox = document.getElementById('lineBox');
+    const statsBox = document.getElementById('stats');
+    const toast = document.getElementById('toast');
+
+    let currentBlobUrl = null;
+    let previewTimer = null;
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function showToast(message, isError = false) {
+        toast.textContent = message;
+        toast.classList.toggle('error', isError);
+        toast.style.display = 'block';
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => { toast.style.display = 'none'; }, 2000);
+    }
+
+    // --- Resizer Logic (pointer events: mouse + touch) ---
+    let isDragging = false;
+
+    dragBar.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        dragBar.setPointerCapture(e.pointerId);
+        appBody.classList.add('dragging');
+        dragBar.classList.add('active');
+    });
+
+    dragBar.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const rect = mainBox.getBoundingClientRect();
+        let percentage;
+        if (mainBox.classList.contains('vertical')) {
+            percentage = ((e.clientY - rect.top) / rect.height) * 100;
+        } else {
+            percentage = ((e.clientX - rect.left) / rect.width) * 100;
+        }
+        if (percentage > 5 && percentage < 95) {
+            editorPane.style.flex = `0 0 ${percentage}%`;
+        }
+    });
+
+    function endDrag() {
+        isDragging = false;
+        appBody.classList.remove('dragging');
+        dragBar.classList.remove('active');
+    }
+    dragBar.addEventListener('pointerup', endDrag);
+    dragBar.addEventListener('pointercancel', endDrag);
+
+    // --- Core Functions ---
+    function updatePreview(val) {
+        if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+        const blob = new Blob([val], { type: 'text/html' });
+        currentBlobUrl = URL.createObjectURL(blob);
+        viewer.src = currentBlobUrl;
+    }
+
+    function sync({ immediatePreview = false } = {}) {
+        const val = ed.value;
+        display.textContent = val + (val.endsWith('\n') ? ' ' : '');
+        Prism.highlightElement(display);
+
+        const lineCount = val.split('\n').length;
+        lineBox.innerHTML = Array.from({ length: lineCount }, (_, i) => i + 1).join('<br>');
+
+        const wordCount = val.trim() ? val.trim().split(/\s+/).length : 0;
+        statsBox.textContent = `Chars: ${val.length} | Words: ${wordCount}`;
+
+        localStorage.setItem(STORAGE_KEY, val);
+
+        clearTimeout(previewTimer);
+        if (immediatePreview) {
+            updatePreview(val);
+        } else {
+            previewTimer = setTimeout(() => updatePreview(val), PREVIEW_DEBOUNCE_MS);
+        }
+    }
+
+    function doScroll() {
+        const pre = document.getElementById('highlighting-content');
+        pre.scrollTop = lineBox.scrollTop = ed.scrollTop;
+        pre.scrollLeft = ed.scrollLeft;
+    }
+
+    function runReplace() {
+        const findVal = document.getElementById('findTxt').value;
+        const replaceVal = document.getElementById('repTxt').value;
+        if (findVal === '') return;
+        const escapedFind = findVal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(escapedFind, 'g');
+        ed.value = ed.value.replace(regex, replaceVal);
+        sync({ immediatePreview: true });
+    }
+
+    function downloadHTML() {
+        const blob = new Blob([ed.value], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'project.html';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function duplicateEditor() {
+        window.open(location.href, '_blank');
+    }
+
+    function openPreviewTab() {
+        const blob = new Blob([ed.value], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+    }
+
+    function viewSourceCode() {
+        const source = document.documentElement.outerHTML;
+        const w = window.open('about:blank');
+        if (!w) { showToast('Popup blocked', true); return; }
+        w.document.title = 'Source Code';
+        const pre = w.document.createElement('pre');
+        pre.style.cssText = 'padding:20px; font-family:monospace; white-space:pre-wrap; background:#111; color:#eee; margin:0;';
+        pre.textContent = source;
+        w.document.body.style.margin = '0';
+        w.document.body.appendChild(pre);
+    }
+
+    function loadFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => { ed.value = ev.target.result; sync({ immediatePreview: true }); };
+        reader.onerror = () => showToast('Failed to read file', true);
+        reader.readAsText(file);
+    }
+
+    function copyHex(hex) {
+        navigator.clipboard.writeText(hex)
+            .then(() => showToast('Hex Copied: ' + hex))
+            .catch(() => showToast('Clipboard blocked', true));
+    }
+
+    function beautifyCode() {
+        let code = ed.value.replace(/>\s*</g, '>\n<');
+        let tab = 0;
+        let result = '';
+        code.split('\n').forEach(l => {
+            l = l.trim();
+            if (!l) return;
+            if (l.match(/<\/\w/)) tab--;
+            result += '    '.repeat(Math.max(0, tab)) + l + '\n';
+            if (l.match(/<\w/) && !l.match(/\/>/) && !l.match(/<\/\w/)) tab++;
+        });
+        ed.value = result.trim();
+        sync({ immediatePreview: true });
+    }
+
+    function toggleSearch() {
+        const s = document.getElementById('search-panel');
+        const isOpen = s.style.display === 'flex';
+        s.style.display = isOpen ? 'none' : 'flex';
+        if (!isOpen) document.getElementById('findTxt').focus();
+    }
+
+    function toggleLayout() {
+        mainBox.classList.toggle('vertical');
+        editorPane.style.flex = '0 0 50%';
+    }
+
+    function toggleMobile() {
+        viewer.classList.toggle('mobile');
+        editorPane.style.flex = viewer.classList.contains('mobile') ? '0 0 40%' : '0 0 50%';
+    }
+
+    function clearAll() {
+        if (!confirm('Clear Lab?')) return;
+        ed.value = '';
+        sync({ immediatePreview: true });
+    }
+
+    function handleEditorKeydown(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            ed.setRangeText('    ', ed.selectionStart, ed.selectionEnd, 'end');
+            sync();
+        } else if (e.key === '>') {
+            const pos = ed.selectionStart;
+            const match = ed.value.substring(0, pos).match(/<(\w+)[^>]*$/);
+            if (match) {
+                setTimeout(() => {
+                    const c = ed.selectionStart;
+                    ed.setRangeText(`</${match[1]}>`, c, c, 'start');
+                    sync();
+                }, 10);
+            }
+        }
+    }
+
+    function handleGlobalKeydown(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            downloadHTML();
+        } else if (e.key === 'Escape') {
+            document.getElementById('ai-sidebar').classList.remove('open');
+            document.getElementById('search-panel').style.display = 'none';
+        }
+    }
+
+    function toggleAI() {
+        document.getElementById('ai-sidebar').classList.toggle('open');
+    }
+
+    async function askAI() {
+        const key = document.getElementById('api-key').value.trim();
+        const prompt = document.getElementById('ai-prompt').value.trim();
+        const chat = document.getElementById('ai-chat');
+        const btn = document.getElementById('btn-ask-ai');
+
+        if (!key) { showToast('API Key Needed', true); return; }
+        if (!prompt) { showToast('Describe the change first', true); return; }
+
+        btn.disabled = true;
+        chat.textContent = 'Generating...';
+        try {
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                body: JSON.stringify({
+                    model: 'gpt-3.5-turbo',
+                    messages: [
+                        { role: 'system', content: 'Return only raw code snippet.' },
+                        { role: 'user', content: prompt }
+                    ]
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data?.error?.message || `Request failed (${res.status})`);
+            }
+
+            const content = data?.choices?.[0]?.message?.content;
+            if (!content) throw new Error('No content returned');
+
+            ed.value += `\n${content.replace(/```html|```/g, '').trim()}`;
+            chat.textContent = 'Code injected.';
+            sync({ immediatePreview: true });
+        } catch (err) {
+            chat.textContent = 'Error: ' + err.message;
+            showToast('AI request failed', true);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // --- Wiring ---
+    document.getElementById('file-upload').addEventListener('change', loadFile);
+    document.getElementById('btn-save').addEventListener('click', downloadHTML);
+    document.getElementById('btn-duplicate').addEventListener('click', duplicateEditor);
+    document.getElementById('btn-preview-tab').addEventListener('click', openPreviewTab);
+    document.getElementById('btn-view-source').addEventListener('click', viewSourceCode);
+    document.getElementById('btn-beautify').addEventListener('click', beautifyCode);
+    document.getElementById('btn-search').addEventListener('click', toggleSearch);
+    document.getElementById('colorInput').addEventListener('input', (e) => copyHex(e.target.value));
+    document.getElementById('btn-mobile').addEventListener('click', toggleMobile);
+    document.getElementById('btn-layout').addEventListener('click', toggleLayout);
+    document.getElementById('btn-clear').addEventListener('click', clearAll);
+    document.getElementById('btn-replace').addEventListener('click', runReplace);
+    document.getElementById('btn-toggle-ai').addEventListener('click', toggleAI);
+    document.getElementById('btn-close-ai').addEventListener('click', toggleAI);
+    document.getElementById('btn-ask-ai').addEventListener('click', askAI);
+
+    ed.addEventListener('input', () => sync());
+    ed.addEventListener('scroll', doScroll);
+    ed.addEventListener('keydown', handleEditorKeydown);
+    document.addEventListener('keydown', handleGlobalKeydown);
+
+    window.addEventListener('load', () => {
+        ed.value = localStorage.getItem(STORAGE_KEY) || '<h1>Build Ready</h1>';
+        sync({ immediatePreview: true });
+    });
+})();
+</script>
+</body>
+</html>

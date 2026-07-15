@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Games</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="code/CSS/shared.css">
+<link rel="stylesheet" href="code/CSS/games.css">
+</head>
+<body>
+  <nav class="tabs" id="tabs">
+    <button type="button" class="tab active" data-category="all">All</button>
+    <button type="button" class="tab" data-category="web">Web</button>
+    <button type="button" class="tab" data-category="emulator">Emulator</button>
+    <button type="button" class="tab" data-category="favorite">Favorites</button>
+  </nav>
+
+  <h1>Website Project</h1>
+  <div class="subheader">
+    <p class="sub">Pick a game to play.</p>
+    <span class="game-count" id="gameCount"></span>
+  </div>
+
+  <div class="toolbar">
+    <div class="search-row">
+      <input type="text" id="search" placeholder="Search by name...">
+      <button id="clearSearch">Clear Search</button>
+    </div>
+
+    <div class="controls">
+      <label for="sortBy">Sort by:</label>
+      <select id="sortBy">
+        <option value="title">Name</option>
+        <option value="dateAdded">Recently Added</option>
+      </select>
+      <button id="sortDir" class="sort-dir" data-dir="asc">Ascending ▲</button>
+
+      <div class="accordion" id="tagsAccordion">
+        <button type="button" class="accordion-header" id="tagsToggle">
+          Tags <span class="chevron">▾</span>
+        </button>
+        <div class="accordion-panel">
+          <div class="tag-options" id="tagOptions"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid" id="cardGrid"></div>
+
+  <script src="code/General%20Code/sidebar.js"></script>
+  <script src="code/Game%20Code/games.js"></script>
+</body>
+</html>

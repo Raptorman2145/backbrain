@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Meet the Team</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../code/CSS/shared.css">
+<link rel="stylesheet" href="../code/CSS/team.css">
+</head>
+<body>
+  <h1>Meet the Team</h1>
+  <p class="sub">As of right now, everyone remains anonymous and is referred to by username. There's no real hierarchy beyond the founder — everyone else does what's asked of them.</p>
+
+  <div id="teamGrid"></div>
+  <p class="empty-state" id="emptyState" hidden>No team members added yet.</p>
+
+  <div id="memberModal" class="modal-overlay" hidden>
+    <div class="modal-box">
+      <button type="button" class="modal-close" id="closeMemberModal" aria-label="Close">&times;</button>
+      <div id="modalAvatar"></div>
+      <div class="modal-name" id="modalName"></div>
+      <div class="modal-role" id="modalRole"></div>
+      <p class="modal-bio" id="modalBio"></p>
+      <div class="modal-links" id="modalLinks"></div>
+    </div>
+  </div>
+
+  <script src="../code/General%20Code/sidebar.js"></script>
+  <script src="../code/General%20Code/team.js"></script>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="code/CSS/shared.css">
+<link rel="stylesheet" href="code/CSS/cards.css">
+<link rel="stylesheet" href="code/CSS/tools.css">
+<style>
+    body { padding-top: 130px; }
+
+    :root {
+        --primary-red: #900000;
+        --glow-bright: #ff3131;
+        --bg-dark: rgba(5, 0, 0, 0.98);
+    }
+
+    #main-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 15px;
+        z-index: 999999;
+        pointer-events: none;
+    }
+
+    /* FIXED ORIGIN BORDER LOGIC */
+    .glow-container {
+        position: relative;
+        width: 100%;
+        max-width: 1250px;
+        margin: 0 auto;
+        min-height: 70px;
+        pointer-events: auto;
+        border-radius: 15px;
+        z-index: 1;
+        /* Using background-origin and clipping to keep the glow strictly on the border */
+        background: linear-gradient(var(--bg-dark), var(--bg-dark)) padding-box,
+                    conic-gradient(from var(--angle), transparent 70%, var(--glow-bright) 100%) border-box;
+        border: 2px solid transparent;
+        animation: rotateAngle 4s linear infinite;
+    }
+
+    /* This allows us to animate the angle of the conic gradient specifically */
+    @property --angle {
+        syntax: '<angle>';
+        initial-value: 0deg;
+        inherits: false;
+    }
+
+    @keyframes rotateAngle {
+        to { --angle: 360deg; }
+    }
+
+    #top-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 25px;
+        width: 100%;
+        border-radius: 13px;
+    }
+
+    #time-display { font-family: 'Orbitron', sans-serif; color: var(--glow-bright); text-shadow: 0 0 15px color-mix(in srgb, var(--glow-bright) 70%, transparent); }
+    .button-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; flex: 1; padding: 5px 0; }
+    .icon-button { position: relative; width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; color: var(--primary-red); border: 1px solid color-mix(in srgb, var(--primary-red) 40%, transparent); background: color-mix(in srgb, var(--primary-red) 12%, black); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .icon-button:hover, .icon-button.active { background-color: var(--primary-red); color: white; box-shadow: 0 0 20px var(--glow-bright); transform: translateY(-3px); border-color: var(--glow-bright); }
+    .icon-button.active i { animation: pulseActive 2.5s infinite ease-in-out; }
+    @keyframes pulseActive { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.8); transform: scale(1.1); } }
+    .tooltip-text { visibility: hidden; background-color: #000; color: #fff; border: 1px solid var(--primary-red); padding: 5px 10px; border-radius: 4px; font-size: 11px; position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%); opacity: 0; white-space: nowrap; transition: 0.2s; z-index: 50; }
+    .icon-button:hover .tooltip-text { visibility: visible; opacity: 1; bottom: -55px; }
+
+    @media (max-width: 768px) {
+        #left-section, #right-section { width: 45%; }
+        .button-container { width: 100%; order: 3; border-top: 1px solid color-mix(in srgb, var(--primary-red) 30%, transparent); padding-top: 15px; }
+        .icon-button { width: 38px; height: 38px; }
+    }
+
+    .hero {
+        position: relative;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 10px;
+        padding: 20px;
+    }
+    .hero-glow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 600px;
+        height: 600px;
+        max-width: 90vw;
+        max-height: 90vw;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, color-mix(in srgb, var(--accent-bg) 25%, transparent) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: -1;
+    }
+    .hero-logo {
+        width: min(480px, 80vw);
+        height: auto;
+        animation: heroLogoPulse 3s ease-in-out infinite;
+    }
+    @keyframes heroLogoPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.03); }
+    }
+    .hero-tagline {
+        color: var(--text-muted);
+        font-size: 16px;
+        margin: 6px 0 0;
+    }
+    .hero-stats {
+        color: var(--text-muted);
+        font-size: 12px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin: 0;
+    }
+
+</style>
+</head>
+<body>
+  <div id="main-overlay">
+    <div class="glow-container">
+      <div id="top-bar">
+        <div id="left-section" class="flex flex-col">
+          <div id="time-display" class="text-xl font-black tracking-tight">--:--:--</div>
+          <div id="date-display" class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Loading...</div>
+        </div>
+
+        <nav class="button-container">
+          <a href="index.html" class="icon-button"><i class="fas fa-home"></i><span class="tooltip-text">Home</span></a>
+          <a href="Tabs/settings.html" class="icon-button"><i class="fa-solid fa-gear"></i><span class="tooltip-text">Settings</span></a>
+          <a href="Tabs/team.html" class="icon-button"><i class="fa-solid fa-people-group"></i><span class="tooltip-text">Our Team</span></a>
+          <a href="Tabs/Tool%20Tabs/tools.html" class="icon-button"><i class="fa-solid fa-toolbox"></i><span class="tooltip-text">Tools</span></a>
+          <a href="Tabs/credits.html" class="icon-button"><i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip-text">Disclaimer</span></a>
+        </nav>
+
+        <div id="right-section" class="flex items-center space-x-3 justify-end">
+          <p id="battery-level-text" class="text-xs font-black">--%</p>
+          <div id="battery-shell" class="w-7 h-3.5 border rounded-sm p-[1px] flex items-center">
+            <div id="battery-level-fill" class="h-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="hero-glow"></div>
+    <img src="images/logo.png" alt="The Gamer's Backbrain" class="hero-logo" width="995" height="620">
+    <p class="hero-tagline">Pick where you want to go.</p>
+    <p class="hero-stats" id="heroStats">9 tools &middot; 9 team members</p>
+  </div>
+
+  <script src="code/General%20Code/sidebar.js"></script>
+  <script>
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('time-display').textContent = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('date-display').textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    if (navigator.getBattery) {
+      navigator.getBattery().then(battery => {
+        const update = () => {
+          const level = Math.round(battery.level * 100);
+          const fill = document.getElementById('battery-level-fill');
+          const text = document.getElementById('battery-level-text');
+          const shell = document.getElementById('battery-shell');
+          text.textContent = level + '%';
+          fill.style.width = level + '%';
+          let color = '#22c55e';
+          if (level < 25) color = '#dc2626';
+          else if (level < 55) color = '#eab308';
+          fill.style.backgroundColor = color;
+          text.style.color = color;
+          shell.style.borderColor = color;
+        };
+        update();
+        battery.onlevelchange = update;
+      });
+    }
+
+    // Appends your locally-tracked top tools to the static counts above -
+    // sidebar.js records a visit per tool page and exposes the tally via
+    // mostUsedTools(); nothing to show yet on a first-ever visit, so this
+    // stays silent rather than printing an empty "Most used:" label.
+    const mostUsed = window.BackbrainTheme.mostUsedTools(3);
+    if (mostUsed.length) {
+      document.getElementById('heroStats').textContent += ` · Most used: ${mostUsed.map(t => t.title).join(', ')}`;
+    }
+
+    function highlightCurrentPage() {
+      const currentUrl = window.location.href;
+      const links = document.querySelectorAll('.icon-button');
+      links.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href && href !== "#" && currentUrl.includes(href)) {
+          link.classList.add('active');
+        }
+      });
+    }
+    window.addEventListener('load', highlightCurrentPage);
+  </script>
+</body>
+</html>

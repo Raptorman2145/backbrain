@@ -1,0 +1,44 @@
+:root { --bg: #200a0a; }
+
+html, body { height: 100%; margin: 0; padding: 0; }
+body {
+  font-family: system-ui, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
+
+.notfound-box { padding: 20px; }
+.notfound-code {
+  font-size: 96px;
+  font-weight: 900;
+  color: var(--accent-bg);
+  line-height: 1;
+  text-shadow: 0 0 40px color-mix(in srgb, var(--accent-bg) 50%, transparent);
+}
+h1 { margin: 8px 0 4px; font-size: 24px; }
+p.sub { color: var(--text-muted); margin: 0 0 28px; }
+
+.notfound-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.notfound-btn {
+  padding: 12px 22px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.notfound-btn:hover { background: var(--surface-alt); }
+.notfound-btn.primary {
+  background: var(--accent-bg);
+  border-color: var(--accent-bg);
+  color: var(--accent-text);
+}
