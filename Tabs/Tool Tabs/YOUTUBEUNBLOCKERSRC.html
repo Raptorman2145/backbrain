@@ -822,6 +822,15 @@
             }
         }
 
+        // Video/channel titles get embedded inside single-quoted onclick="..."
+        // JS string literals all over this file. Real YouTube titles routinely
+        // contain apostrophes ("Don't...", "World's Best...") - left unescaped,
+        // one of those breaks the string literal and makes that button throw a
+        // silent JS error instead of doing anything (Launch included).
+        function escJs(str) {
+            return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+
         function formatN(num) {
             if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
             if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
@@ -1104,11 +1113,11 @@
                     </div>
                 </div>
                 <div class="flex gap-1 shrink-0">
-                    <button class="btn-base btn-control" onclick="openPlaylistModal('${id}', '${title.replace(/'/g, "\\'")}', '${creator}')">+</button>
+                    <button class="btn-base btn-control" onclick="openPlaylistModal('${id}', '${escJs(title)}', '${escJs(creator)}')">+</button>
                     <button class="btn-base btn-copy" onclick="copyLink('${id}', this)">❐</button>
-                    <button class="btn-base btn-control ${isLater?'active':''}" onclick="toggleLater('${id}', '${title}')">🕒</button>
-                    <button class="btn-base btn-control" onclick="toggleFinished('${id}', '${title}')">✓</button>
-                    <button class="btn-base btn-launch text-[10px]" onclick="smartLaunch('${id}', '${title}', true)">Launch</button>
+                    <button class="btn-base btn-control ${isLater?'active':''}" onclick="toggleLater('${id}', '${escJs(title)}')">🕒</button>
+                    <button class="btn-base btn-control" onclick="toggleFinished('${id}', '${escJs(title)}')">✓</button>
+                    <button class="btn-base btn-launch text-[10px]" onclick="smartLaunch('${id}', '${escJs(title)}', true)">Launch</button>
                 </div>
             </div>`;
         }
@@ -1119,7 +1128,7 @@
             const options = document.getElementById('playlist-options');
             const lists = JSON.parse(localStorage.getItem('backbrain_playlists') || '{}');
             options.innerHTML = Object.keys(lists).map(name => `
-                <button class="w-full text-left p-2 text-[10px] font-mono bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800" onclick="addToPlaylist('${name}')">
+                <button class="w-full text-left p-2 text-[10px] font-mono bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800" onclick="addToPlaylist('${escJs(name)}')">
                     ${name.toUpperCase()} (${lists[name].length} NODES)
                 </button>
             `).join('') || '<p class="text-[9px] text-zinc-600 font-mono">NO PLAYLISTS DETECTED</p>';
@@ -1179,23 +1188,20 @@
             if(!historyPaused) updateStatus(id, 'started', true, title);
             if (fromQueue) lastLaunchedFromQueue = { id, title };
             else lastLaunchedFromQueue = null;
-            const embedUrl = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&modestbranding=1&rel=0`;
+
+            // Opened synchronously (not inside the setTimeout below) so it stays
+            // tied to this click's user gesture - a window.open() delayed by a
+            // timer loses that and gets silently blocked as a popup, which is
+            // why Launch would sometimes do nothing at all. Points at a real
+            // same-origin page (YOUTUBEPLAYER.html) rather than a blob: URL,
+            // since blob documents have a null/opaque origin, which YouTube's
+            // nocookie embed intermittently rejects as an invalid embedding
+            // context ("Error 153") - a real page always sends a real,
+            // consistent referrer.
+            window.open(`YOUTUBEPLAYER.html?v=${encodeURIComponent(id)}&title=${encodeURIComponent(title)}`, '_blank');
+
             setTimeout(() => {
                 document.getElementById('launch-overlay').style.display = 'none';
-                // A window.open('about:blank') + document.write() popup has no real
-                // navigable URL, and YouTube's embed player rejects that context
-                // (shows "Error 153"). Navigating to a blob: URL instead gives the
-                // tab a real address, matching the pattern already used in PROXY.html.
-                const safeTitle = String(title).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-                // YouTube now strictly requires a valid Referer/Origin from the
-                // embedding page (missing/blocked referrer -> "Error 153"). The
-                // blob document has no <meta referrer> of its own, so this must
-                // be set explicitly on the iframe rather than relying on the
-                // browser's default policy.
-                const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${safeTitle}</title><style>html,body{margin:0;padding:0;background:#000;height:100%;}iframe{position:fixed;inset:0;width:100%;height:100%;border:0;}</style></head><body><iframe src="${embedUrl}" referrerpolicy="strict-origin-when-cross-origin" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></body></html>`;
-                const blob = new Blob([html], { type: 'text/html' });
-                const url = URL.createObjectURL(blob);
-                window.open(url, '_blank');
             }, 800);
         }
 
@@ -1267,12 +1273,12 @@
                 <div class="playlist-container border border-zinc-800 p-3 bg-black/40">
                     <div class="flex justify-between items-center mb-2">
                         <span class="text-[10px] text-red-600 font-bold uppercase tracking-widest">${name}</span>
-                        <button class="text-[9px] text-zinc-600 hover:text-red-600" onclick="removePlaylist('${name}')">[DELETE]</button>
+                        <button class="text-[9px] text-zinc-600 hover:text-red-600" onclick="removePlaylist('${escJs(name)}')">[DELETE]</button>
                     </div>
-                    <div class="space-y-1">${lists[name].map(v => `<div class="text-[9px] font-mono text-zinc-400 cursor-pointer hover:text-white truncate" onclick="smartLaunch('${v.id}', '${v.title}')">> ${v.title}</div>`).join('')}</div>
+                    <div class="space-y-1">${lists[name].map(v => `<div class="text-[9px] font-mono text-zinc-400 cursor-pointer hover:text-white truncate" onclick="smartLaunch('${v.id}', '${escJs(v.title)}')">> ${v.title}</div>`).join('')}</div>
                 </div>`).join('') || '<p class="text-[9px] text-zinc-700">NO LOCAL PLAYLISTS</p>';
-            document.getElementById('watch-later-list').innerHTML = q.map(x => `<div class="flex justify-between text-[10px] font-mono border-b border-zinc-900 py-1" onmouseenter="showPreview('${x.id}')" onmouseleave="hidePreview()"><span class="cursor-pointer hover:text-orange-500" onclick="smartLaunch('${x.id}', '${x.title}', true)">[Q] ${x.title}</span><button class="text-red-900" onclick="toggleLater('${x.id}')">[X]</button></div>`).join('') || '<p class="text-[9px] text-zinc-600">QUEUE EMPTY</p>';
-            document.getElementById('archive-list').innerHTML = arc.map(x => `<div class="text-[10px] font-mono py-1 cursor-pointer hover:opacity-100 opacity-60" onmouseenter="showPreview('${x.id}')" onmouseleave="hidePreview()" onclick="smartLaunch('${x.id}', '${x.title}')">[L] ${x.title}</div>`).join('') || '<p class="text-[9px] text-zinc-600">HISTORY EMPTY</p>';
+            document.getElementById('watch-later-list').innerHTML = q.map(x => `<div class="flex justify-between text-[10px] font-mono border-b border-zinc-900 py-1" onmouseenter="showPreview('${x.id}')" onmouseleave="hidePreview()"><span class="cursor-pointer hover:text-orange-500" onclick="smartLaunch('${x.id}', '${escJs(x.title)}', true)">[Q] ${x.title}</span><button class="text-red-900" onclick="toggleLater('${x.id}')">[X]</button></div>`).join('') || '<p class="text-[9px] text-zinc-600">QUEUE EMPTY</p>';
+            document.getElementById('archive-list').innerHTML = arc.map(x => `<div class="text-[10px] font-mono py-1 cursor-pointer hover:opacity-100 opacity-60" onmouseenter="showPreview('${x.id}')" onmouseleave="hidePreview()" onclick="smartLaunch('${x.id}', '${escJs(x.title)}')">[L] ${x.title}</div>`).join('') || '<p class="text-[9px] text-zinc-600">HISTORY EMPTY</p>';
         }
 
         function showPreview(id) {

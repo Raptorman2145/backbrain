@@ -1,5 +1,15 @@
 const CHANGELOG = [
   {
+    date: "2026-07-21",
+    items: [
+      "Chat: removed the room passphrase — joining now only asks for a nickname, since the chat is a single shared room for anyone who visits the page.",
+      "Renamed Chat to \"Chatroom,\" gave it a real icon instead of the Discord logo, and moved it up into the sidebar's main section.",
+      "Chatroom: replaced the old passphrase model with real (anonymous, no-signup) accounts — every visitor gets a genuine account, and display names are first-come-first-served so nobody can post under a name someone else already claimed.",
+      "Chatroom: added editable profiles — picture, bio, status line, pronouns, and an accent color.",
+      "Chatroom: messages from the same person posted back-to-back now only show the name and picture above the first one.",
+    ],
+  },
+  {
     date: "2026-07-15",
     items: [
       "Reordered the sidebar — Discord and Settings now sit at the very bottom instead of being mixed in with the main tool links.",

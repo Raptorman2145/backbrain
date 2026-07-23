@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Encoding Toolkit</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .mode-tab {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active {
+    color: var(--accent-bg);
+    border-bottom-color: var(--accent-bg);
+  }
+
+  .mode-panel { display: none; max-width: 640px; }
+  .mode-panel.active { display: block; }
+
+  .enc-textarea {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: 'Consolas', monospace;
+    background: var(--surface);
+    min-height: 100px;
+    resize: vertical;
+  }
+  .enc-textarea[readonly] { background: var(--surface-alt); }
+
+  button:focus-visible, textarea:focus-visible, input:focus-visible {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 14px 0;
+  }
+  button.action {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+  button.action.secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+  }
+  button.action.copied { background: var(--surface); color: var(--accent-bg); border: 1px solid var(--accent-bg); }
+
+  .error-msg {
+    color: var(--accent-bg);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .hint {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin: 6px 0 0;
+  }
+</style>
+</head>
+<body>
+  <h1>Encoding Toolkit</h1>
+  <p class="sub">Convert text between URL, HTML entity, binary, and hex encodings.</p>
+
+  <div class="mode-tabs">
+    <button type="button" class="mode-tab active" data-mode="url">URL</button>
+    <button type="button" class="mode-tab" data-mode="html">HTML Entities</button>
+    <button type="button" class="mode-tab" data-mode="binary">Text &#8644; Binary</button>
+    <button type="button" class="mode-tab" data-mode="hex">Text &#8644; Hex</button>
+  </div>
+
+  <div class="mode-panel active" id="panel-url">
+    <textarea id="urlInput" class="enc-textarea tool-input" placeholder="Enter text or a %-encoded URL..."></textarea>
+    <div class="btn-row">
+      <button type="button" class="action" id="urlEncodeBtn">Encode</button>
+      <button type="button" class="action secondary" id="urlDecodeBtn">Decode</button>
+      <button type="button" class="action secondary" id="urlCopyBtn">Copy</button>
+    </div>
+    <textarea id="urlOutput" class="enc-textarea tool-input" placeholder="Result..." readonly></textarea>
+    <div class="error-msg" id="urlError" hidden></div>
+  </div>
+
+  <div class="mode-panel" id="panel-html">
+    <textarea id="htmlInput" class="enc-textarea tool-input" placeholder="Enter text or HTML entities..."></textarea>
+    <div class="btn-row">
+      <button type="button" class="action" id="htmlEncodeBtn">Encode</button>
+      <button type="button" class="action secondary" id="htmlDecodeBtn">Decode</button>
+      <button type="button" class="action secondary" id="htmlCopyBtn">Copy</button>
+    </div>
+    <textarea id="htmlOutput" class="enc-textarea tool-input" placeholder="Result..." readonly></textarea>
+    <div class="error-msg" id="htmlError" hidden></div>
+  </div>
+
+  <div class="mode-panel" id="panel-binary">
+    <textarea id="binaryInput" class="enc-textarea tool-input" placeholder="Enter text, or 8-bit binary bytes to decode..."></textarea>
+    <div class="btn-row">
+      <button type="button" class="action" id="binaryEncodeBtn">Encode</button>
+      <button type="button" class="action secondary" id="binaryDecodeBtn">Decode</button>
+      <button type="button" class="action secondary" id="binaryCopyBtn">Copy</button>
+    </div>
+    <textarea id="binaryOutput" class="enc-textarea tool-input" placeholder="Result..." readonly></textarea>
+    <div class="error-msg" id="binaryError" hidden></div>
+    <p class="hint">Decoding expects space-separated 8-bit bytes, e.g. 01001000 01101001</p>
+  </div>
+
+  <div class="mode-panel" id="panel-hex">
+    <textarea id="hexInput" class="enc-textarea tool-input" placeholder="Enter text, or hex bytes to decode..."></textarea>
+    <div class="btn-row">
+      <button type="button" class="action" id="hexEncodeBtn">Encode</button>
+      <button type="button" class="action secondary" id="hexDecodeBtn">Decode</button>
+      <button type="button" class="action secondary" id="hexCopyBtn">Copy</button>
+    </div>
+    <textarea id="hexOutput" class="enc-textarea tool-input" placeholder="Result..." readonly></textarea>
+    <div class="error-msg" id="hexError" hidden></div>
+    <p class="hint">Decoding expects hex byte pairs, e.g. 48 65 6c 6c 6f (an optional 0x per byte is fine)</p>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`panel-${tab.dataset.mode}`).classList.add('active');
+      });
+    });
+
+    function runAction(fn, outputEl, errorEl) {
+      try {
+        outputEl.value = fn();
+        errorEl.hidden = true;
+      } catch (e) {
+        outputEl.value = '';
+        errorEl.textContent = e.message || 'Could not process that input.';
+        errorEl.hidden = false;
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand('copy'); } catch { /* ignore - clipboard may be unavailable */ }
+      document.body.removeChild(ta);
+    }
+
+    function wireCopy(btn, outputEl) {
+      btn.addEventListener('click', () => {
+        if (!outputEl.value) return;
+        const flash = () => {
+          const original = btn.textContent;
+          btn.classList.add('copied');
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.classList.remove('copied'); btn.textContent = original; }, 1200);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(outputEl.value).then(flash).catch(() => { fallbackCopy(outputEl.value); flash(); });
+        } else {
+          fallbackCopy(outputEl.value);
+          flash();
+        }
+      });
+    }
+
+    function wireMode(prefix, encodeFn, decodeFn) {
+      const input = document.getElementById(`${prefix}Input`);
+      const output = document.getElementById(`${prefix}Output`);
+      const error = document.getElementById(`${prefix}Error`);
+      document.getElementById(`${prefix}EncodeBtn`).addEventListener('click', () => runAction(() => encodeFn(input.value), output, error));
+      document.getElementById(`${prefix}DecodeBtn`).addEventListener('click', () => runAction(() => decodeFn(input.value), output, error));
+      wireCopy(document.getElementById(`${prefix}CopyBtn`), output);
+    }
+
+    // --- URL ---
+    wireMode('url',
+      str => encodeURIComponent(str),
+      str => decodeURIComponent(str.trim())
+    );
+
+    // --- HTML Entities ---
+    function htmlEntityEncode(str) {
+      const named = { '&': 'amp', '<': 'lt', '>': 'gt', '"': 'quot', "'": '#39' };
+      let out = '';
+      for (const ch of str) {
+        const code = ch.codePointAt(0);
+        if (named[ch]) out += `&${named[ch]};`;
+        else if (code > 126) out += `&#${code};`;
+        else out += ch;
+      }
+      return out;
+    }
+    // A <textarea>'s content model is RCDATA: the HTML parser decodes
+    // character references inside it but never turns markup into real
+    // elements, so this decodes every entity form (named/decimal/hex)
+    // correctly without ever risking script execution - unlike assigning
+    // the same string to a normal element's innerHTML.
+    function htmlEntityDecode(str) {
+      const ta = document.createElement('textarea');
+      ta.innerHTML = str;
+      return ta.value;
+    }
+    wireMode('html', htmlEntityEncode, htmlEntityDecode);
+
+    // --- Text <-> Binary ---
+    function textToBinary(str) {
+      const bytes = new TextEncoder().encode(str);
+      return Array.from(bytes, b => b.toString(2).padStart(8, '0')).join(' ');
+    }
+    function binaryToText(str) {
+      const cleaned = str.replace(/\s+/g, '');
+      if (!cleaned) throw new Error('Nothing to decode.');
+      if (!/^[01]+$/.test(cleaned)) throw new Error('Binary input can only contain 0s and 1s.');
+      if (cleaned.length % 8 !== 0) throw new Error('Binary length must be a multiple of 8 bits.');
+      const bytes = new Uint8Array(cleaned.length / 8);
+      for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(cleaned.slice(i * 8, i * 8 + 8), 2);
+      try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      } catch {
+        throw new Error('Those bits don\'t form valid UTF-8 text.');
+      }
+    }
+    wireMode('binary', textToBinary, binaryToText);
+
+    // --- Text <-> Hex ---
+    function textToHex(str) {
+      const bytes = new TextEncoder().encode(str);
+      return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join(' ');
+    }
+    function hexToText(str) {
+      const cleaned = str.replace(/0x/gi, '').replace(/\s+/g, '');
+      if (!cleaned) throw new Error('Nothing to decode.');
+      if (!/^[0-9a-fA-F]+$/.test(cleaned)) throw new Error('Hex input can only contain 0-9 and A-F.');
+      if (cleaned.length % 2 !== 0) throw new Error('Hex input must have an even number of digits.');
+      const bytes = new Uint8Array(cleaned.length / 2);
+      for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(cleaned.slice(i * 2, i * 2 + 2), 16);
+      try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      } catch {
+        throw new Error('Those bytes don\'t form valid UTF-8 text.');
+      }
+    }
+    wireMode('hex', textToHex, hexToText);
+  </script>
+</body>
+</html>

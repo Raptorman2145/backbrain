@@ -21,16 +21,33 @@ const KEY_LABELS = {
   proxy_bookmarks: "Proxy — Bookmarks",
   proxy_history: "Proxy — History",
   web_lab_ultra_save: "HTML Viewer — Saved code",
-  chat_firebase_config: "Chat — Firebase config",
-  chat_session: "Chat — Session (passphrase & nickname)",
+  chat_firebase_config: "Chatroom — Firebase config",
   site_theme_accent: "Appearance — Theme accent color",
   site_theme_bg: "Appearance — Theme background color",
   site_theme_mode: "Appearance — Theme light/dark mode",
   site_theme_font: "Appearance — Theme font",
+  site_theme_zoom: "Appearance — Theme zoom",
   site_theme_bg_image: "Appearance — Theme background scene",
   site_reduce_motion: "Appearance — Reduce motion",
   site_cursor: "Appearance — Cursor (idle)",
   site_cursor_hover: "Appearance — Cursor (hover)",
+  site_tab_cloak: "Privacy — Tab cloak",
+  site_panic_enabled: "Privacy — Panic key enabled",
+  site_panic_key: "Privacy — Panic key",
+  site_panic_url: "Privacy — Panic destination URL",
+  calc_history: "Calculator — History",
+  pwgen_options: "Password Generator — Options",
+  markdown_draft: "Markdown Previewer — Draft",
+  habits_data: "Habit Tracker — Habits & history",
+  emoji_recent: "Emoji Picker — Recently used",
+  teamgen_names: "Team Generator — Name list",
+  rps_score: "Rock Paper Scissors — Score",
+  typingtest_best: "Typing Test — Best WPM",
+  numberguesser_best: "Number Guesser — Best scores",
+  quotes_favorites: "Quote Generator — Favorites",
+  flashcards_decks: "Flashcards — Decks",
+  ugs_favorites: "UGS — Favorites",
+  ugs_recent: "UGS — Recently played",
 };
 
 function friendlyLabel(key) {
@@ -58,6 +75,7 @@ const ACCENT_KEY = "site_theme_accent";
 const BG_KEY = "site_theme_bg";
 const MODE_KEY = "site_theme_mode";
 const FONT_KEY = "site_theme_font";
+const ZOOM_KEY = "site_theme_zoom";
 const BG_IMAGE_KEY = "site_theme_bg_image";
 const MOTION_KEY = "site_reduce_motion";
 const CURSOR_KEY = "site_cursor";
@@ -91,12 +109,12 @@ const THEMES = [
   },
   {
     name: "Wii", accent: "#0d5c94", bg: "#eaf6ff", mode: "light",
-    font: "'Varela Round', sans-serif", bgImage: null,
+    font: "'Nintendo DS BIOS', sans-serif", zoom: "122%", bgImage: null,
     cursor: null, cursorHover: null,
   },
   {
     name: "Undertale", accent: "#33b6ff", bg: "#050505", mode: "dark",
-    font: "'Silkscreen', monospace",
+    font: "'Monster Friend', monospace", zoom: "85%",
     bgImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.78)), url("${window.BackbrainTheme.resolveAsset("images/backgrounds/undertale-bg.jpeg")}")`,
     cursor: null, cursorHover: null,
   },
@@ -144,7 +162,7 @@ const THEMES = [
   },
   {
     name: "Minecraft", accent: "#5b9c34", bg: "#170f06", mode: "dark",
-    font: "'Press Start 2P', monospace",
+    font: "'Minecraft', monospace",
     bgImage: `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.78)), url("${window.BackbrainTheme.resolveAsset("images/backgrounds/minecraft-bg.jpeg")}")`,
     cursor: null, cursorHover: "minecraft-hand.svg",
   },
@@ -271,12 +289,14 @@ function applyThemeValues(theme) {
   const setOrClear = (key, value) => value ? localStorage.setItem(key, value) : localStorage.removeItem(key);
   setOrClear(MODE_KEY, theme.mode === "light" ? "light" : null);
   setOrClear(FONT_KEY, theme.font);
+  setOrClear(ZOOM_KEY, theme.zoom);
   setOrClear(BG_IMAGE_KEY, theme.bgImage);
   setOrClear(CURSOR_KEY, theme.cursor);
   setOrClear(CURSOR_HOVER_KEY, theme.cursorHover);
 
   window.BackbrainTheme.apply();
   window.BackbrainTheme.applyFont();
+  window.BackbrainTheme.applyZoom();
   window.BackbrainTheme.applyBackground();
   window.BackbrainCursor.apply();
 }
@@ -289,22 +309,37 @@ function setTheme(theme) {
 }
 
 // --- Live theme preview on hover ---
-// Hovering a tile applies it immediately (via the same localStorage-driven
-// apply path as a real selection) so you can see accent/font/background/
-// cursor together before committing, then restores the previous values on
-// mouseleave. Snapshotting the real values on first hover and restoring
+// Hovering a tile applies it (via the same localStorage-driven apply path
+// as a real selection) so you can see accent/font/background/cursor
+// together before committing, then restores the previous values on
+// mouseleave. Snapshotting the real values on first preview and restoring
 // them - rather than a separate non-persisting render path - reuses every
 // existing apply*() function as-is instead of forking them into "preview"
 // and "real" variants.
-const PREVIEW_KEYS = [ACCENT_KEY, BG_KEY, MODE_KEY, FONT_KEY, BG_IMAGE_KEY, CURSOR_KEY, CURSOR_HOVER_KEY];
+//
+// The preview itself is debounced (HOVER_PREVIEW_DELAY_MS) rather than
+// firing on mouseenter - sweeping the mouse across a row of tiles used to
+// apply-then-immediately-revert every single tile it crossed, which read as
+// the whole page jumping/flickering. Waiting for the cursor to actually
+// rest on a tile means a quick scan across the grid changes nothing at all;
+// only a deliberate pause previews that tile.
+const PREVIEW_KEYS = [ACCENT_KEY, BG_KEY, MODE_KEY, FONT_KEY, ZOOM_KEY, BG_IMAGE_KEY, CURSOR_KEY, CURSOR_HOVER_KEY];
+const HOVER_PREVIEW_DELAY_MS = 1000;
 let previewSnapshot = null;
+let hoverPreviewTimer = null;
 
 function previewTheme(theme) {
   if (!previewSnapshot) previewSnapshot = PREVIEW_KEYS.map(key => [key, localStorage.getItem(key)]);
   applyThemeValues(theme);
 }
 
+function scheduleThemePreview(theme) {
+  clearTimeout(hoverPreviewTimer);
+  hoverPreviewTimer = setTimeout(() => previewTheme(theme), HOVER_PREVIEW_DELAY_MS);
+}
+
 function endThemePreview() {
+  clearTimeout(hoverPreviewTimer);
   if (!previewSnapshot) return;
   previewSnapshot.forEach(([key, value]) => {
     if (value === null) localStorage.removeItem(key);
@@ -313,6 +348,7 @@ function endThemePreview() {
   previewSnapshot = null;
   window.BackbrainTheme.apply();
   window.BackbrainTheme.applyFont();
+  window.BackbrainTheme.applyZoom();
   window.BackbrainTheme.applyBackground();
   window.BackbrainCursor.apply();
 }
@@ -371,7 +407,7 @@ function renderThemeList() {
 
   themeListEl.querySelectorAll(".theme-tile[data-index]").forEach(btn => {
     const theme = THEMES[Number(btn.dataset.index)];
-    btn.addEventListener("mouseenter", () => previewTheme(theme));
+    btn.addEventListener("mouseenter", () => scheduleThemePreview(theme));
     btn.addEventListener("mouseleave", endThemePreview);
     btn.addEventListener("click", () => {
       themeCustomRow.hidden = true;
@@ -408,7 +444,23 @@ reduceMotionChk.addEventListener("change", () => {
   window.BackbrainTheme.apply();
 });
 
+// If the site is currently showing a preset theme (its accent matches one
+// in THEMES exactly), keep every other stored dimension - font, zoom,
+// cursor, bgImage, mode - in sync with THEMES' current values rather than
+// trusting whatever got snapshotted into localStorage the last time this
+// theme happened to be selected. Without this, tuning a shipped theme's
+// values in code (e.g. correcting a font size) silently does nothing for
+// anyone who already had that theme picked, until they happen to reselect
+// it - they'd keep seeing the old value with no way to know it changed.
+// A custom color has no matching THEMES entry, so it's left untouched.
+function resyncPresetTheme() {
+  const active = currentAccent().toLowerCase();
+  const theme = THEMES.find(t => t.accent.toLowerCase() === active);
+  if (theme) applyThemeValues(theme);
+}
+
 function refreshAppearanceControls() {
+  resyncPresetTheme();
   renderThemeList();
   reduceMotionChk.checked = localStorage.getItem(MOTION_KEY) === "true";
 }
@@ -463,9 +515,12 @@ importInput.addEventListener("change", event => {
     keys.forEach(key => localStorage.setItem(key, payload.data[key]));
     window.BackbrainTheme.apply();
     window.BackbrainTheme.applyFont();
+    window.BackbrainTheme.applyZoom();
     window.BackbrainTheme.applyBackground();
     window.BackbrainCursor.apply();
+    window.BackbrainStealth.applyCloak();
     refreshAppearanceControls();
+    refreshStealthControls();
     renderKeyList();
     alert("Import complete.");
   };
@@ -478,6 +533,7 @@ clearBtn.addEventListener("click", () => {
   localStorage.clear();
   window.BackbrainTheme.apply();
   window.BackbrainTheme.applyFont();
+  window.BackbrainTheme.applyZoom();
   window.BackbrainTheme.applyBackground();
   window.BackbrainCursor.apply();
   refreshAppearanceControls();
@@ -496,6 +552,112 @@ function renderShortcutsList() {
   `).join("");
 }
 
+// --- Privacy & Stealth: tab cloak + panic key ---
+// The actual behavior (applying a cloak, listening for the panic key) lives in
+// sidebar.js and is exposed as window.BackbrainStealth; this section is just
+// the Settings UI that reads/writes the same localStorage keys and calls
+// applyCloak() so changes preview live without a reload.
+const CLOAK_KEY = "site_tab_cloak";
+const PANIC_ENABLED_KEY = "site_panic_enabled";
+const PANIC_KEY_KEY = "site_panic_key";
+const PANIC_URL_KEY = "site_panic_url";
+
+// Deliberately excludes Escape (it already closes the search overlay) and any
+// plain letter/number (far too easy to trigger mid-type) - only keys that are
+// rarely pressed by accident during normal browsing.
+const PANIC_KEYS = [
+  { value: "`", label: "` (backtick)" },
+  { value: "\\", label: "\\ (backslash)" },
+  { value: "End", label: "End" },
+  { value: "Insert", label: "Insert" },
+  { value: "Pause", label: "Pause / Break" },
+];
+
+const cloakPresetEl = document.getElementById("cloakPreset");
+const cloakCustomRow = document.getElementById("cloakCustomRow");
+const cloakCustomTitle = document.getElementById("cloakCustomTitle");
+const panicEnabledChk = document.getElementById("panicEnabledChk");
+const panicControls = document.getElementById("panicControls");
+const panicKeySelect = document.getElementById("panicKeySelect");
+const panicUrlInput = document.getElementById("panicUrlInput");
+const panicTestBtn = document.getElementById("panicTestBtn");
+
+function getCloakCfg() {
+  try { return JSON.parse(localStorage.getItem(CLOAK_KEY)); } catch { return null; }
+}
+
+function buildCloakOptions() {
+  const presets = window.BackbrainStealth.CLOAK_PRESETS;
+  const opts = ['<option value="off">Off — show the real title &amp; icon</option>'];
+  Object.entries(presets).forEach(([id, p]) => opts.push(`<option value="${id}">${p.label}</option>`));
+  opts.push('<option value="custom">Custom title…</option>');
+  cloakPresetEl.innerHTML = opts.join("");
+}
+
+function buildPanicKeyOptions() {
+  panicKeySelect.innerHTML = PANIC_KEYS.map(k => `<option value="${k.value}">${k.label}</option>`).join("");
+}
+
+function refreshStealthControls() {
+  const cfg = getCloakCfg();
+  const preset = (cfg && cfg.preset) || "off";
+  cloakPresetEl.value = preset;
+  cloakCustomRow.hidden = preset !== "custom";
+  cloakCustomTitle.value = preset === "custom" ? (cfg.title || "") : "";
+
+  panicEnabledChk.checked = localStorage.getItem(PANIC_ENABLED_KEY) === "true";
+  panicKeySelect.value = localStorage.getItem(PANIC_KEY_KEY) || window.BackbrainStealth.DEFAULT_PANIC_KEY;
+  if (!panicKeySelect.value) panicKeySelect.value = window.BackbrainStealth.DEFAULT_PANIC_KEY;
+  panicUrlInput.value = localStorage.getItem(PANIC_URL_KEY) || window.BackbrainStealth.DEFAULT_PANIC_URL;
+  panicControls.classList.toggle("disabled", !panicEnabledChk.checked);
+}
+
+cloakPresetEl.addEventListener("change", () => {
+  const val = cloakPresetEl.value;
+  if (val === "off") localStorage.removeItem(CLOAK_KEY);
+  else if (val === "custom") localStorage.setItem(CLOAK_KEY, JSON.stringify({ preset: "custom", title: cloakCustomTitle.value.trim() }));
+  else localStorage.setItem(CLOAK_KEY, JSON.stringify({ preset: val }));
+  cloakCustomRow.hidden = val !== "custom";
+  window.BackbrainStealth.applyCloak();
+  renderKeyList();
+});
+
+cloakCustomTitle.addEventListener("input", () => {
+  localStorage.setItem(CLOAK_KEY, JSON.stringify({ preset: "custom", title: cloakCustomTitle.value.trim() }));
+  window.BackbrainStealth.applyCloak();
+});
+
+panicEnabledChk.addEventListener("change", () => {
+  localStorage.setItem(PANIC_ENABLED_KEY, panicEnabledChk.checked ? "true" : "false");
+  // Persist the currently-shown key/URL too, so enabling takes effect
+  // immediately with exactly what's on screen (not last-saved values).
+  localStorage.setItem(PANIC_KEY_KEY, panicKeySelect.value);
+  const url = panicUrlInput.value.trim();
+  if (url) localStorage.setItem(PANIC_URL_KEY, url);
+  panicControls.classList.toggle("disabled", !panicEnabledChk.checked);
+  renderKeyList();
+});
+
+panicKeySelect.addEventListener("change", () => {
+  localStorage.setItem(PANIC_KEY_KEY, panicKeySelect.value);
+});
+
+panicUrlInput.addEventListener("change", () => {
+  const url = panicUrlInput.value.trim();
+  if (url) localStorage.setItem(PANIC_URL_KEY, url);
+  else localStorage.removeItem(PANIC_URL_KEY);
+});
+
+// Opens the destination in a new tab so you can confirm the URL works without
+// navigating away from Settings (the real panic key uses location.replace).
+panicTestBtn.addEventListener("click", () => {
+  window.open(panicUrlInput.value.trim() || window.BackbrainStealth.DEFAULT_PANIC_URL, "_blank", "noopener");
+});
+
+buildCloakOptions();
+buildPanicKeyOptions();
+
 refreshAppearanceControls();
+refreshStealthControls();
 renderKeyList();
 renderShortcutsList();

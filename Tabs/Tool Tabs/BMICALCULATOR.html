@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BMI Calculator</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 12px; }
+
+  .disclaimer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 560px;
+    margin: 0 0 22px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .mode-tab {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active {
+    color: var(--accent-bg);
+    border-bottom-color: var(--accent-bg);
+  }
+
+  .bmi-form { max-width: 560px; }
+
+  .field-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field.field-wide { grid-column: 1 / -1; }
+  .field label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .field[hidden] { display: none; }
+
+  .tool-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 11px;
+    font-size: 14px;
+    background: var(--surface);
+  }
+  select.tool-input { cursor: pointer; }
+
+  .imperial-height-row { display: flex; gap: 8px; }
+  .imperial-height-row input { min-width: 0; }
+
+  button:focus-visible, .tool-input:focus-visible {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+  button.action {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+  }
+  button.action.secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border-strong);
+  }
+
+  .error-msg { color: var(--accent-bg); font-size: 13px; margin: 4px 0 20px; }
+
+  .results { max-width: 560px; margin-top: 8px; }
+  .results[hidden] { display: none; }
+
+  .result-block {
+    padding: 18px 20px;
+    margin-bottom: 18px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .result-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .result-value {
+    font-size: 40px;
+    font-weight: 900;
+    color: var(--accent-bg);
+    line-height: 1.1;
+  }
+  .result-category { font-size: 15px; font-weight: 700; margin: 2px 0 16px; }
+
+  .bmi-gauge {
+    position: relative;
+    display: flex;
+    height: 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    overflow: visible;
+    margin-bottom: 10px;
+  }
+  .gauge-segment {
+    height: 100%;
+    background: var(--surface-alt);
+    border-right: 1px solid var(--border);
+    transition: background-color 0.2s ease;
+  }
+  .gauge-segment:last-child { border-right: none; }
+  .gauge-segment.active { background: var(--accent-bg); }
+
+  .gauge-marker {
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    width: 4px;
+    background: var(--text);
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
+    transform: translateX(-50%);
+    transition: left 0.2s ease;
+    left: 0%;
+  }
+
+  .gauge-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .legend-item i {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border-strong);
+  }
+  .legend-item.active { color: var(--text); font-weight: 700; }
+  .legend-item.active i { background: var(--accent-bg); border-color: var(--accent-bg); }
+
+  .calorie-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+  }
+  .calorie-card {
+    padding: 16px 18px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .calorie-value { font-size: 28px; margin: 2px 0 6px; }
+  .result-sub { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+</style>
+</head>
+<body>
+  <h1>BMI Calculator</h1>
+  <p class="sub">Body mass index and estimated daily calorie needs.</p>
+  <p class="disclaimer"><i class="fa-solid fa-circle-info"></i> Estimates only — not medical advice.</p>
+
+  <div class="mode-tabs" id="unitTabs">
+    <button type="button" class="mode-tab active" data-unit="metric">Metric</button>
+    <button type="button" class="mode-tab" data-unit="imperial">Imperial</button>
+  </div>
+
+  <form class="bmi-form" id="bmiForm">
+    <div class="field-grid">
+      <div class="field" data-unit-fields="metric">
+        <label for="heightCm">Height (cm)</label>
+        <input type="number" id="heightCm" class="tool-input" inputmode="decimal" min="50" max="272" step="0.1" placeholder="e.g. 175">
+      </div>
+      <div class="field" data-unit-fields="imperial" hidden>
+        <label for="heightFt">Height (ft / in)</label>
+        <div class="imperial-height-row">
+          <input type="number" id="heightFt" class="tool-input" inputmode="decimal" min="1" max="8" step="1" placeholder="ft">
+          <input type="number" id="heightIn" class="tool-input" inputmode="decimal" min="0" max="11.9" step="0.1" placeholder="in">
+        </div>
+      </div>
+
+      <div class="field" data-unit-fields="metric">
+        <label for="weightKg">Weight (kg)</label>
+        <input type="number" id="weightKg" class="tool-input" inputmode="decimal" min="20" max="400" step="0.1" placeholder="e.g. 70">
+      </div>
+      <div class="field" data-unit-fields="imperial" hidden>
+        <label for="weightLb">Weight (lb)</label>
+        <input type="number" id="weightLb" class="tool-input" inputmode="decimal" min="40" max="880" step="0.1" placeholder="e.g. 154">
+      </div>
+
+      <div class="field">
+        <label for="age">Age (years)</label>
+        <input type="number" id="age" class="tool-input" inputmode="decimal" min="2" max="120" step="1" placeholder="e.g. 30">
+      </div>
+
+      <div class="field">
+        <label for="sex">Biological sex</label>
+        <select id="sex" class="tool-input">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+
+      <div class="field field-wide">
+        <label for="activity">Activity level</label>
+        <select id="activity" class="tool-input">
+          <option value="1.2">Sedentary (little or no exercise)</option>
+          <option value="1.375">Light (exercise 1-3 days/week)</option>
+          <option value="1.55" selected>Moderate (exercise 3-5 days/week)</option>
+          <option value="1.725">Active (exercise 6-7 days/week)</option>
+          <option value="1.9">Very active (hard exercise, physical job)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button type="submit" class="action">Calculate</button>
+      <button type="button" class="action secondary" id="resetBtn">Reset</button>
+    </div>
+    <div class="error-msg" id="formError" hidden></div>
+  </form>
+
+  <div class="results" id="results" hidden>
+    <div class="result-block">
+      <div class="result-label">Body Mass Index</div>
+      <div class="result-value" id="bmiValue">--</div>
+      <div class="result-category" id="bmiCategory"></div>
+
+      <div class="bmi-gauge" id="bmiGauge">
+        <div class="gauge-segment" data-cat="under" style="flex-basis:14%"></div>
+        <div class="gauge-segment" data-cat="normal" style="flex-basis:26%"></div>
+        <div class="gauge-segment" data-cat="over" style="flex-basis:20%"></div>
+        <div class="gauge-segment" data-cat="obese" style="flex-basis:40%"></div>
+        <div class="gauge-marker" id="gaugeMarker"></div>
+      </div>
+      <div class="gauge-legend">
+        <span class="legend-item" data-cat="under"><i></i>Underweight</span>
+        <span class="legend-item" data-cat="normal"><i></i>Normal</span>
+        <span class="legend-item" data-cat="over"><i></i>Overweight</span>
+        <span class="legend-item" data-cat="obese"><i></i>Obese</span>
+      </div>
+    </div>
+
+    <div class="calorie-grid">
+      <div class="calorie-card">
+        <div class="result-label">BMR</div>
+        <div class="result-value calorie-value" id="bmrValue">--</div>
+        <div class="result-sub">Estimated calories/day at complete rest (Mifflin-St Jeor).</div>
+      </div>
+      <div class="calorie-card">
+        <div class="result-label">TDEE</div>
+        <div class="result-value calorie-value" id="tdeeValue">--</div>
+        <div class="result-sub">Estimated calories/day at your selected activity level.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const KG_PER_LB = 0.45359237;
+    const CM_PER_IN = 2.54;
+    const GAUGE_MIN = 15;
+    const GAUGE_MAX = 40;
+
+    const unitTabs = document.querySelectorAll('#unitTabs .mode-tab');
+    const metricFields = document.querySelectorAll('[data-unit-fields="metric"]');
+    const imperialFields = document.querySelectorAll('[data-unit-fields="imperial"]');
+
+    const heightCm = document.getElementById('heightCm');
+    const heightFt = document.getElementById('heightFt');
+    const heightIn = document.getElementById('heightIn');
+    const weightKg = document.getElementById('weightKg');
+    const weightLb = document.getElementById('weightLb');
+    const ageInput = document.getElementById('age');
+    const sexInput = document.getElementById('sex');
+    const activityInput = document.getElementById('activity');
+
+    const form = document.getElementById('bmiForm');
+    const formError = document.getElementById('formError');
+    const resultsEl = document.getElementById('results');
+    const bmiValueEl = document.getElementById('bmiValue');
+    const bmiCategoryEl = document.getElementById('bmiCategory');
+    const gaugeMarker = document.getElementById('gaugeMarker');
+    const bmrValueEl = document.getElementById('bmrValue');
+    const tdeeValueEl = document.getElementById('tdeeValue');
+
+    let unit = 'metric';
+
+    function round1(n) { return Math.round(n * 10) / 10; }
+
+    // Converts whatever is already typed instead of just blanking the other
+    // side, so switching units mid-entry doesn't throw the user's numbers away.
+    function setUnit(next) {
+      if (next === unit) return;
+      if (next === 'imperial') {
+        const cm = parseFloat(heightCm.value);
+        if (Number.isFinite(cm) && cm > 0) {
+          const totalIn = cm / CM_PER_IN;
+          heightFt.value = Math.floor(totalIn / 12);
+          heightIn.value = round1(totalIn % 12);
+        }
+        const kg = parseFloat(weightKg.value);
+        if (Number.isFinite(kg) && kg > 0) weightLb.value = round1(kg / KG_PER_LB);
+      } else {
+        const ft = parseFloat(heightFt.value) || 0;
+        const inch = parseFloat(heightIn.value) || 0;
+        if (ft > 0 || inch > 0) heightCm.value = round1((ft * 12 + inch) * CM_PER_IN);
+        const lb = parseFloat(weightLb.value);
+        if (Number.isFinite(lb) && lb > 0) weightKg.value = round1(lb * KG_PER_LB);
+      }
+      unit = next;
+      unitTabs.forEach(t => t.classList.toggle('active', t.dataset.unit === unit));
+      metricFields.forEach(f => f.hidden = unit !== 'metric');
+      imperialFields.forEach(f => f.hidden = unit !== 'imperial');
+    }
+
+    unitTabs.forEach(tab => tab.addEventListener('click', () => setUnit(tab.dataset.unit)));
+
+    function categoryFor(bmi) {
+      if (bmi < 18.5) return { key: 'under', label: 'Underweight' };
+      if (bmi < 25) return { key: 'normal', label: 'Normal weight' };
+      if (bmi < 30) return { key: 'over', label: 'Overweight' };
+      return { key: 'obese', label: 'Obese' };
+    }
+
+    function getHeightCm() {
+      if (unit === 'metric') return parseFloat(heightCm.value);
+      const ft = parseFloat(heightFt.value) || 0;
+      const inch = parseFloat(heightIn.value) || 0;
+      return (ft * 12 + inch) * CM_PER_IN;
+    }
+
+    function getWeightKg() {
+      if (unit === 'metric') return parseFloat(weightKg.value);
+      return parseFloat(weightLb.value) * KG_PER_LB;
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const cm = getHeightCm();
+      const kg = getWeightKg();
+      const age = parseFloat(ageInput.value);
+
+      const heightOk = Number.isFinite(cm) && cm >= 50 && cm <= 272;
+      const weightOk = Number.isFinite(kg) && kg >= 20 && kg <= 400;
+      const ageOk = Number.isFinite(age) && age >= 2 && age <= 120;
+
+      if (!heightOk || !weightOk || !ageOk) {
+        formError.textContent = 'Enter a valid height, weight, and age to calculate.';
+        formError.hidden = false;
+        resultsEl.hidden = true;
+        return;
+      }
+      formError.hidden = true;
+
+      const meters = cm / 100;
+      const bmi = kg / (meters * meters);
+      const cat = categoryFor(bmi);
+
+      bmiValueEl.textContent = bmi.toFixed(1);
+      bmiCategoryEl.textContent = cat.label;
+
+      document.querySelectorAll('.gauge-segment').forEach(seg => {
+        seg.classList.toggle('active', seg.dataset.cat === cat.key);
+      });
+      document.querySelectorAll('.legend-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.cat === cat.key);
+      });
+      const pct = Math.max(0, Math.min(100, ((bmi - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN)) * 100));
+      gaugeMarker.style.left = `${pct}%`;
+
+      const sexOffset = sexInput.value === 'male' ? 5 : -161;
+      const bmr = 10 * kg + 6.25 * cm - 5 * age + sexOffset;
+      const tdee = bmr * parseFloat(activityInput.value);
+
+      bmrValueEl.textContent = `${Math.round(bmr)}`;
+      tdeeValueEl.textContent = `${Math.round(tdee)}`;
+
+      resultsEl.hidden = false;
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      form.reset();
+      formError.hidden = true;
+      resultsEl.hidden = true;
+    });
+  </script>
+</body>
+</html>

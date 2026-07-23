@@ -1,0 +1,15 @@
+{
+  "name": "The Gamer's Backbrain",
+  "short_name": "Backbrain",
+  "description": "Games, tools, and more — all in one place.",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#200a0a",
+  "theme_color": "#200a0a",
+  "icons": [
+    { "src": "images/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "images/logo.png", "sizes": "995x620", "type": "image/png", "purpose": "any" }
+  ]
+}

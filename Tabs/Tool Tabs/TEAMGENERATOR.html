@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Team Generator</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .tool-input:focus-visible { outline: none; border-color: var(--accent-bg); box-shadow: var(--focus-ring); }
+  button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  #teamForm { max-width: 480px; margin-bottom: 20px; }
+
+  .field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  #namesInput {
+    width: 100%;
+    min-height: 200px;
+    resize: vertical;
+    padding: 12px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--surface);
+  }
+
+  .name-count { color: var(--text-muted); font-size: 12px; margin: 8px 0 18px; }
+
+  .team-count-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .team-count-row label { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+  #teamCountInput { width: 76px; padding: 9px 10px; font-size: 14px; font-family: inherit; background: var(--surface); }
+
+  .generator-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .generator-actions button {
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  #generateBtn { background: var(--accent-bg); color: var(--accent-text); border-color: var(--accent-bg); }
+  #reshuffleBtn { background: var(--surface); }
+  #reshuffleBtn:disabled { opacity: 0.5; cursor: default; }
+
+  .cap-note {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 12px 0 0;
+    max-width: 440px;
+  }
+
+  .empty-note {
+    max-width: 440px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 20px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+  }
+
+  .teams-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .team-card {
+    flex: 1 1 180px;
+    min-width: 160px;
+    max-width: 260px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+  }
+  .team-title {
+    font-size: 15px;
+    margin: 0 0 10px;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .team-title .team-size { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .team-members { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.7; word-break: break-word; }
+</style>
+</head>
+<body>
+  <h1>Team Generator</h1>
+  <p class="sub">Split a list of names into random, balanced teams.</p>
+
+  <form id="teamForm">
+    <label class="field-label" for="namesInput">Names, one per line</label>
+    <textarea id="namesInput" class="tool-input" placeholder="Alice&#10;Bob&#10;Charlie&#10;Dana..." autocomplete="off"></textarea>
+    <p class="name-count" id="nameCount">0 names entered</p>
+
+    <div class="team-count-row">
+      <label for="teamCountInput">Number of teams</label>
+      <input type="number" id="teamCountInput" class="tool-input" min="1" max="100" value="2">
+    </div>
+
+    <div class="generator-actions">
+      <button type="submit" id="generateBtn" class="tool-btn">Generate Teams</button>
+      <button type="button" id="reshuffleBtn" class="tool-btn" disabled>Reshuffle</button>
+    </div>
+    <p class="cap-note" id="capNote" hidden></p>
+  </form>
+
+  <p class="empty-note" id="emptyNote" hidden>Enter at least one name above, then hit Generate Teams.</p>
+
+  <div class="teams-container" id="teamsContainer" hidden></div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const STORAGE_KEY = "teamgen_names";
+
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function shuffle(list) {
+      const arr = list.slice();
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = secureRandomInt(i + 1);
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    // Round-robin dealing (rather than slicing the shuffled list into equal
+    // chunks) is what keeps team sizes within 1 of each other whenever the
+    // name count doesn't divide evenly by the team count.
+    function dealTeams(names, teamCount) {
+      const teams = Array.from({ length: teamCount }, () => []);
+      names.forEach((name, i) => teams[i % teamCount].push(name));
+      return teams;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    const teamForm = document.getElementById("teamForm");
+    const namesInput = document.getElementById("namesInput");
+    const nameCount = document.getElementById("nameCount");
+    const teamCountInput = document.getElementById("teamCountInput");
+    const reshuffleBtn = document.getElementById("reshuffleBtn");
+    const capNote = document.getElementById("capNote");
+    const emptyNote = document.getElementById("emptyNote");
+    const teamsContainer = document.getElementById("teamsContainer");
+
+    namesInput.value = localStorage.getItem(STORAGE_KEY) || "";
+
+    function parsedNames() {
+      return namesInput.value.split("\n").map(s => s.trim()).filter(s => s.length > 0);
+    }
+
+    function updateCount() {
+      const n = parsedNames().length;
+      nameCount.textContent = `${n} name${n === 1 ? "" : "s"} entered`;
+    }
+
+    function renderTeams(teams) {
+      teamsContainer.innerHTML = teams.map((team, i) => `
+        <div class="team-card">
+          <h2 class="team-title">Team ${i + 1} <span class="team-size">${team.length} ${team.length === 1 ? "person" : "people"}</span></h2>
+          <ol class="team-members">${team.map(name => `<li>${escapeHtml(name)}</li>`).join("")}</ol>
+        </div>
+      `).join("");
+      teamsContainer.hidden = false;
+    }
+
+    function generate() {
+      const names = parsedNames();
+      localStorage.setItem(STORAGE_KEY, namesInput.value);
+
+      if (names.length === 0) {
+        teamsContainer.hidden = true;
+        teamsContainer.innerHTML = "";
+        capNote.hidden = true;
+        emptyNote.hidden = false;
+        reshuffleBtn.disabled = true;
+        return;
+      }
+      emptyNote.hidden = true;
+
+      const requestedRaw = Math.floor(Number(teamCountInput.value));
+      const requested = Number.isFinite(requestedRaw) && requestedRaw > 0 ? requestedRaw : 1;
+      const effective = Math.min(requested, names.length);
+
+      capNote.hidden = effective === requested;
+      if (!capNote.hidden) {
+        capNote.textContent = `Only ${names.length} name${names.length === 1 ? "" : "s"} entered — showing ${effective} team${effective === 1 ? "" : "s"} instead of ${requested}.`;
+      }
+
+      renderTeams(dealTeams(shuffle(names), effective));
+      reshuffleBtn.disabled = false;
+    }
+
+    namesInput.addEventListener("input", () => {
+      updateCount();
+      localStorage.setItem(STORAGE_KEY, namesInput.value);
+    });
+
+    teamForm.addEventListener("submit", e => {
+      e.preventDefault();
+      generate();
+    });
+
+    reshuffleBtn.addEventListener("click", generate);
+
+    updateCount();
+  </script>
+</body>
+</html>

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flashcards</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body { font-family: system-ui, sans-serif; min-height: 100vh; padding: 24px clamp(16px, 4vw, 48px); background: var(--bg); color: var(--text); }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  button:focus-visible, input:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  .primary-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .primary-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    background: var(--surface);
+    margin-bottom: 18px;
+  }
+
+  .empty-state {
+    color: var(--text-muted);
+    font-size: 14px;
+    padding: 16px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+    max-width: 520px;
+  }
+
+  /* ===== Deck list ===== */
+  #deckListView { max-width: 640px; }
+  .inline-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .inline-form .tool-input { flex: 1; min-width: 160px; padding: 10px 12px; font-size: 14px; background: var(--surface); }
+
+  .deck-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .deck-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .deck-name-input {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  .deck-name-input:hover { border-color: var(--border-strong); }
+  .deck-name-input:focus { background: var(--surface-alt); }
+  .deck-meta { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+  .deck-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+
+  .tool-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--surface-alt);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .tool-btn:hover:not(:disabled) { border-color: var(--accent-bg); }
+  .tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .tool-btn.danger { color: var(--accent-bg); border-color: var(--accent-bg); }
+
+  /* ===== Deck editor ===== */
+  #deckEditorView { max-width: 720px; }
+  #editorDeckName { font-size: 20px; margin: 0 0 16px; }
+
+  .card-form { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .card-form .tool-input { flex: 1 1 200px; min-width: 0; padding: 10px 12px; font-size: 14px; background: var(--surface); }
+
+  .card-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .card-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .card-index { color: var(--text-muted); font-size: 12px; width: 22px; flex-shrink: 0; text-align: right; }
+  .card-field-input { flex: 1 1 160px; min-width: 0; padding: 8px 10px; font-size: 13px; background: var(--surface-alt); }
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    background: var(--surface-alt);
+  }
+  .icon-btn.danger { color: var(--accent-bg); border-color: var(--accent-bg); }
+
+  /* ===== Study view ===== */
+  #studyView { max-width: 560px; }
+  .study-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .progress-label { font-size: 13px; font-weight: 700; color: var(--text-muted); }
+  .shuffle-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+  .shuffle-toggle input { cursor: pointer; }
+
+  .flashcard-scene {
+    width: min(480px, 100%);
+    height: clamp(190px, 38vw, 260px);
+    margin: 0 auto 14px;
+    perspective: 1200px;
+  }
+  .flashcard {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: transform 0.5s ease;
+    transform-style: preserve-3d;
+  }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .flashcard-face {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: clamp(15px, 3vw, 19px);
+    font-weight: 600;
+    line-height: 1.4;
+    border-radius: var(--radius-lg);
+    backface-visibility: hidden;
+    box-shadow: var(--shadow-md);
+    overflow-y: auto;
+  }
+  .flashcard-front { background: var(--card-bg); color: var(--text); border: 1px solid var(--border-strong); }
+  .flashcard-back { background: var(--accent-bg); color: var(--accent-text); transform: rotateY(180deg); }
+
+  .flip-hint { text-align: center; color: var(--text-muted); font-size: 12px; margin: 0 0 18px; }
+
+  .study-nav { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .study-nav .tool-btn { padding: 9px 16px; }
+
+  .study-grade-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .grade-btn {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .grade-btn.knew { border: none; background: var(--accent-bg); color: var(--accent-text); }
+  .grade-btn.learning { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
+
+  .study-complete { text-align: center; padding: 30px 16px; }
+  .study-complete p { color: var(--text-muted); margin: 0 0 16px; font-size: 15px; }
+</style>
+</head>
+<body>
+  <h1>Flashcards</h1>
+  <p class="sub">Build a deck and study it with flip cards.</p>
+
+  <div id="deckListView">
+    <form id="newDeckForm" class="inline-form">
+      <input type="text" id="newDeckNameInput" class="tool-input" placeholder="New deck name..." maxlength="60" autocomplete="off">
+      <button type="submit" class="primary-btn" id="newDeckBtn" disabled>Create Deck</button>
+    </form>
+
+    <p class="empty-state" id="noDecksMsg" hidden>No decks yet. Name a deck above and create it to start building your first flashcard set.</p>
+
+    <ul class="deck-list" id="deckList"></ul>
+  </div>
+
+  <div id="deckEditorView" hidden>
+    <button type="button" class="back-btn tool-btn" id="editorBackBtn"><i class="fa-solid fa-arrow-left"></i> Back to decks</button>
+    <h2 id="editorDeckName"></h2>
+
+    <form id="addCardForm" class="card-form">
+      <input type="text" id="cardFrontInput" class="tool-input" placeholder="Front (question)..." maxlength="300" autocomplete="off">
+      <input type="text" id="cardBackInput" class="tool-input" placeholder="Back (answer)..." maxlength="300" autocomplete="off">
+      <button type="submit" class="primary-btn" id="addCardBtn" disabled>Add Card</button>
+    </form>
+
+    <p class="empty-state" id="noCardsMsg" hidden>This deck has no cards yet — add your first one above.</p>
+
+    <ul class="card-list" id="cardList"></ul>
+  </div>
+
+  <div id="studyView" hidden>
+    <button type="button" class="back-btn tool-btn" id="studyBackBtn"><i class="fa-solid fa-arrow-left"></i> Back to decks</button>
+
+    <div class="study-toolbar">
+      <span class="progress-label" id="progressLabel"></span>
+      <label class="shuffle-toggle">
+        <input type="checkbox" id="shuffleToggle">
+        Shuffle
+      </label>
+    </div>
+
+    <p class="empty-state" id="studyEmptyMsg" hidden>This deck has no cards to study yet.</p>
+
+    <div id="studyCardArea">
+      <div class="flashcard-scene">
+        <button type="button" class="flashcard" id="flashcardBtn" aria-label="Flip card">
+          <span class="flashcard-face flashcard-front" id="cardFrontFace"></span>
+          <span class="flashcard-face flashcard-back" id="cardBackFace"></span>
+        </button>
+      </div>
+      <p class="flip-hint">Click the card, or focus it and press Space/Enter, to flip it.</p>
+
+      <div class="study-nav">
+        <button type="button" class="tool-btn" id="prevBtn"><i class="fa-solid fa-arrow-left"></i> Previous</button>
+        <button type="button" class="tool-btn" id="nextBtn">Next <i class="fa-solid fa-arrow-right"></i></button>
+      </div>
+
+      <div class="study-grade-row">
+        <button type="button" class="grade-btn learning" id="stillLearningBtn"><i class="fa-solid fa-rotate-left"></i> Still learning</button>
+        <button type="button" class="grade-btn knew" id="knewItBtn"><i class="fa-solid fa-check"></i> I knew it</button>
+      </div>
+    </div>
+
+    <div class="study-complete" id="studyCompleteMsg" hidden>
+      <p>You've been through every card in this deck.</p>
+      <button type="button" class="primary-btn" id="studyAgainBtn">Study Again</button>
+    </div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const DECKS_KEY = 'flashcards_decks';
+
+    function loadDecks() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(DECKS_KEY));
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+      return [];
+    }
+    function saveDecks() { localStorage.setItem(DECKS_KEY, JSON.stringify(decks)); }
+
+    function genId() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9); }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    let decks = loadDecks();
+    let editingDeckId = null;
+    let sessionDeckId = null;
+    let sessionQueue = [];
+    let sessionIndex = 0;
+
+    function showScreen(name) {
+      deckListView.hidden = name !== 'list';
+      deckEditorView.hidden = name !== 'editor';
+      studyView.hidden = name !== 'study';
+    }
+
+    // ================= Deck list =================
+    const deckListView = document.getElementById('deckListView');
+    const newDeckForm = document.getElementById('newDeckForm');
+    const newDeckNameInput = document.getElementById('newDeckNameInput');
+    const newDeckBtn = document.getElementById('newDeckBtn');
+    const noDecksMsg = document.getElementById('noDecksMsg');
+    const deckListEl = document.getElementById('deckList');
+
+    function renderDeckList() {
+      noDecksMsg.hidden = decks.length !== 0;
+      deckListEl.innerHTML = decks.map(deck => `
+        <li class="deck-row">
+          <input type="text" class="deck-name-input" value="${escapeHtml(deck.name)}" data-id="${deck.id}" maxlength="60" aria-label="Deck name">
+          <span class="deck-meta">${deck.cards.length} card${deck.cards.length === 1 ? '' : 's'}</span>
+          <div class="deck-actions">
+            <button type="button" class="tool-btn" data-action="study" data-id="${deck.id}" ${deck.cards.length === 0 ? 'disabled' : ''} title="${deck.cards.length === 0 ? 'Add cards before studying' : 'Study this deck'}">
+              <i class="fa-solid fa-graduation-cap"></i> Study
+            </button>
+            <button type="button" class="tool-btn" data-action="edit" data-id="${deck.id}"><i class="fa-solid fa-pen"></i> Edit</button>
+            <button type="button" class="tool-btn danger" data-action="delete" data-id="${deck.id}"><i class="fa-solid fa-trash"></i> Delete</button>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function renameDeck(id, rawName) {
+      const deck = decks.find(d => d.id === id);
+      if (!deck) return;
+      const trimmed = rawName.trim();
+      if (trimmed) deck.name = trimmed;
+      saveDecks();
+      renderDeckList();
+    }
+
+    function deleteDeck(id) {
+      const deck = decks.find(d => d.id === id);
+      if (!deck) return;
+      if (!confirm(`Delete the deck "${deck.name}" and all ${deck.cards.length} of its cards? This can't be undone.`)) return;
+      decks = decks.filter(d => d.id !== id);
+      saveDecks();
+      renderDeckList();
+    }
+
+    newDeckNameInput.addEventListener('input', () => {
+      newDeckBtn.disabled = newDeckNameInput.value.trim() === '';
+    });
+    newDeckForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const name = newDeckNameInput.value.trim();
+      if (!name) return;
+      decks.push({ id: genId(), name, cards: [] });
+      saveDecks();
+      newDeckNameInput.value = '';
+      newDeckBtn.disabled = true;
+      renderDeckList();
+    });
+
+    deckListEl.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const id = btn.dataset.id;
+      if (btn.dataset.action === 'study') startStudy(id);
+      else if (btn.dataset.action === 'edit') openEditor(id);
+      else if (btn.dataset.action === 'delete') deleteDeck(id);
+    });
+    // focusout (not blur) because blur doesn't bubble, and this list is
+    // rebuilt via innerHTML so a per-row listener would need re-binding.
+    deckListEl.addEventListener('focusout', e => {
+      const input = e.target.closest('.deck-name-input');
+      if (!input) return;
+      renameDeck(input.dataset.id, input.value);
+    });
+    deckListEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.matches('.deck-name-input')) {
+        e.preventDefault();
+        e.target.blur();
+      }
+    });
+
+    // ================= Deck editor =================
+    const deckEditorView = document.getElementById('deckEditorView');
+    const editorBackBtn = document.getElementById('editorBackBtn');
+    const editorDeckName = document.getElementById('editorDeckName');
+    const addCardForm = document.getElementById('addCardForm');
+    const cardFrontInput = document.getElementById('cardFrontInput');
+    const cardBackInput = document.getElementById('cardBackInput');
+    const addCardBtn = document.getElementById('addCardBtn');
+    const noCardsMsg = document.getElementById('noCardsMsg');
+    const cardListEl = document.getElementById('cardList');
+
+    function currentEditingDeck() { return decks.find(d => d.id === editingDeckId) || null; }
+
+    function openEditor(id) {
+      editingDeckId = id;
+      renderEditor();
+      showScreen('editor');
+    }
+
+    function renderEditor() {
+      const deck = currentEditingDeck();
+      if (!deck) { renderDeckList(); showScreen('list'); return; }
+      editorDeckName.textContent = deck.name;
+      noCardsMsg.hidden = deck.cards.length !== 0;
+      cardListEl.innerHTML = deck.cards.map((card, i) => `
+        <li class="card-row">
+          <span class="card-index">${i + 1}</span>
+          <input type="text" class="tool-input card-field-input" value="${escapeHtml(card.front)}" data-id="${card.id}" data-field="front" placeholder="Front" maxlength="300" aria-label="Card ${i + 1} front">
+          <input type="text" class="tool-input card-field-input" value="${escapeHtml(card.back)}" data-id="${card.id}" data-field="back" placeholder="Back" maxlength="300" aria-label="Card ${i + 1} back">
+          <button type="button" class="icon-btn tool-btn danger" data-action="delete-card" data-id="${card.id}" title="Delete card"><i class="fa-solid fa-trash"></i></button>
+        </li>
+      `).join('');
+    }
+
+    function updateAddCardButtonState() {
+      addCardBtn.disabled = !cardFrontInput.value.trim() || !cardBackInput.value.trim();
+    }
+    [cardFrontInput, cardBackInput].forEach(input => input.addEventListener('input', updateAddCardButtonState));
+
+    addCardForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const deck = currentEditingDeck();
+      if (!deck) return;
+      const front = cardFrontInput.value.trim();
+      const back = cardBackInput.value.trim();
+      if (!front || !back) return;
+      deck.cards.push({ id: genId(), front, back });
+      saveDecks();
+      cardFrontInput.value = '';
+      cardBackInput.value = '';
+      updateAddCardButtonState();
+      cardFrontInput.focus();
+      renderEditor();
+    });
+
+    cardListEl.addEventListener('focusout', e => {
+      const input = e.target.closest('.card-field-input');
+      if (!input) return;
+      const deck = currentEditingDeck();
+      const card = deck && deck.cards.find(c => c.id === input.dataset.id);
+      if (!card) return;
+      const trimmed = input.value.trim();
+      if (!trimmed) { input.value = card[input.dataset.field]; return; }
+      card[input.dataset.field] = trimmed;
+      saveDecks();
+    });
+    cardListEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.matches('.card-field-input')) {
+        e.preventDefault();
+        e.target.blur();
+      }
+    });
+    cardListEl.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-action="delete-card"]');
+      if (!btn) return;
+      const deck = currentEditingDeck();
+      if (!deck) return;
+      deck.cards = deck.cards.filter(c => c.id !== btn.dataset.id);
+      saveDecks();
+      renderEditor();
+    });
+
+    editorBackBtn.addEventListener('click', () => {
+      editingDeckId = null;
+      renderDeckList();
+      showScreen('list');
+    });
+
+    // ================= Study =================
+    const studyView = document.getElementById('studyView');
+    const studyBackBtn = document.getElementById('studyBackBtn');
+    const progressLabel = document.getElementById('progressLabel');
+    const shuffleToggle = document.getElementById('shuffleToggle');
+    const studyEmptyMsg = document.getElementById('studyEmptyMsg');
+    const studyCardArea = document.getElementById('studyCardArea');
+    const flashcardBtn = document.getElementById('flashcardBtn');
+    const cardFrontFace = document.getElementById('cardFrontFace');
+    const cardBackFace = document.getElementById('cardBackFace');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const stillLearningBtn = document.getElementById('stillLearningBtn');
+    const knewItBtn = document.getElementById('knewItBtn');
+    const studyCompleteMsg = document.getElementById('studyCompleteMsg');
+    const studyAgainBtn = document.getElementById('studyAgainBtn');
+
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function shuffledCopy(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = secureRandomInt(i + 1);
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function currentStudyDeck() { return decks.find(d => d.id === sessionDeckId) || null; }
+
+    function startStudy(id) {
+      const deck = decks.find(d => d.id === id);
+      if (!deck || deck.cards.length === 0) return;
+      sessionDeckId = id;
+      shuffleToggle.checked = false;
+      sessionQueue = [...deck.cards];
+      sessionIndex = 0;
+      showScreen('study');
+      renderStudyCard();
+      requestAnimationFrame(() => flashcardBtn.focus());
+    }
+
+    function renderStudyCard() {
+      studyCompleteMsg.hidden = true;
+      const hasCards = sessionQueue.length > 0;
+      studyEmptyMsg.hidden = hasCards;
+      studyCardArea.hidden = !hasCards;
+      if (!hasCards) { progressLabel.textContent = ''; return; }
+
+      const card = sessionQueue[sessionIndex];
+      flashcardBtn.classList.remove('flipped');
+      cardFrontFace.textContent = card.front;
+      cardBackFace.textContent = card.back;
+      progressLabel.textContent = `Card ${sessionIndex + 1} of ${sessionQueue.length}`;
+      prevBtn.disabled = sessionIndex === 0;
+      nextBtn.disabled = sessionIndex === sessionQueue.length - 1;
+    }
+
+    function showSessionComplete() {
+      studyEmptyMsg.hidden = true;
+      studyCardArea.hidden = true;
+      studyCompleteMsg.hidden = false;
+      progressLabel.textContent = `Card ${sessionQueue.length} of ${sessionQueue.length}`;
+    }
+
+    flashcardBtn.addEventListener('click', () => flashcardBtn.classList.toggle('flipped'));
+
+    prevBtn.addEventListener('click', () => {
+      if (sessionIndex > 0) { sessionIndex--; renderStudyCard(); }
+    });
+    nextBtn.addEventListener('click', () => {
+      if (sessionIndex < sessionQueue.length - 1) { sessionIndex++; renderStudyCard(); }
+    });
+
+    knewItBtn.addEventListener('click', () => {
+      if (sessionIndex < sessionQueue.length - 1) { sessionIndex++; renderStudyCard(); }
+      else showSessionComplete();
+    });
+
+    stillLearningBtn.addEventListener('click', () => {
+      const [card] = sessionQueue.splice(sessionIndex, 1);
+      // Was the removed card the last one in the queue? Capture that BEFORE
+      // reinserting it, since the splice below grows the length back and
+      // would otherwise mask the check - without this, "still learning" on
+      // the final card just re-inserts it at the same spot and immediately
+      // re-shows the exact same card instead of advancing.
+      const wasLast = sessionIndex >= sessionQueue.length;
+      const insertAt = Math.min(sessionQueue.length, sessionIndex + 3);
+      sessionQueue.splice(insertAt, 0, card);
+      if (wasLast) sessionIndex = 0;
+      renderStudyCard();
+    });
+
+    shuffleToggle.addEventListener('change', () => {
+      if (shuffleToggle.checked) {
+        sessionQueue = shuffledCopy(sessionQueue);
+      } else {
+        const deck = currentStudyDeck();
+        sessionQueue = deck ? [...deck.cards] : [];
+      }
+      sessionIndex = 0;
+      renderStudyCard();
+    });
+
+    studyAgainBtn.addEventListener('click', () => {
+      const deck = currentStudyDeck();
+      sessionQueue = deck ? (shuffleToggle.checked ? shuffledCopy(deck.cards) : [...deck.cards]) : [];
+      sessionIndex = 0;
+      renderStudyCard();
+    });
+
+    studyBackBtn.addEventListener('click', () => {
+      sessionDeckId = null;
+      renderDeckList();
+      showScreen('list');
+    });
+
+    renderDeckList();
+  </script>
+</body>
+</html>

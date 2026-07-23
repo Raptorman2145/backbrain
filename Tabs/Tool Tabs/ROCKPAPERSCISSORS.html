@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rock Paper Scissors</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body { font-family: system-ui, sans-serif; min-height: 100vh; padding: 24px clamp(16px, 4vw, 48px); background: var(--bg); color: var(--text); }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  button:focus-visible, input:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .mode-tab {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active { color: var(--accent-bg); border-bottom-color: var(--accent-bg); }
+
+  .scoreboard {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+    padding: 14px 18px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    max-width: 480px;
+  }
+  .score-cell { text-align: center; min-width: 52px; }
+  .score-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+  .score-value { font-size: 24px; font-weight: 900; font-variant-numeric: tabular-nums; }
+  #resetScoreBtn { margin-left: auto; padding: 8px 14px; font-size: 12px; background: var(--surface-alt); }
+
+  .match-banner {
+    max-width: 480px;
+    margin-bottom: 18px;
+    padding: 10px 16px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .match-banner[hidden] { display: none; }
+  .match-banner.decided { border-color: var(--accent-bg); }
+
+  .primary-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .choice-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 8px; }
+  .choice-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 120px;
+    padding: 22px 12px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.1s ease, background 0.15s ease;
+  }
+  .choice-btn i { font-size: 34px; color: var(--accent-bg); }
+  .choice-btn:hover:not(:disabled) { border-color: var(--accent-bg); background: var(--surface-alt); }
+  .choice-btn:active:not(:disabled) { transform: scale(0.95); }
+  .choice-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .result-area { margin-top: 28px; max-width: 480px; min-height: 150px; }
+  .face-off { display: flex; align-items: center; justify-content: center; gap: 24px; margin-bottom: 16px; }
+  .face-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 110px;
+    padding: 16px 10px;
+    border-radius: var(--radius-md);
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  .result-area.reveal .face-card { animation: cardReveal 0.35s ease forwards; }
+  .result-area.reveal .face-card.cpu { animation-delay: 0.12s; }
+  @keyframes cardReveal { to { opacity: 1; transform: scale(1); } }
+  .face-label { font-size: 11px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .face-card i { font-size: 38px; color: var(--accent-bg); }
+  .vs-label { font-weight: 900; color: var(--text-muted); font-size: 13px; }
+
+  .result-verdict { text-align: center; font-size: 17px; font-weight: 700; opacity: 0; min-height: 24px; }
+  .result-area.reveal .result-verdict { animation: verdictFade 0.35s ease 0.28s forwards; }
+  @keyframes verdictFade { to { opacity: 1; } }
+  .result-verdict.win { color: var(--accent-bg); }
+  .result-verdict.lose { color: var(--text-muted); }
+  .result-verdict.tie { color: var(--text); }
+
+  .hint { color: var(--text-muted); font-size: 13px; margin: 10px 0 0; }
+</style>
+</head>
+<body>
+  <h1>Rock Paper Scissors</h1>
+  <p class="sub">Best the CPU — first to 5, or play endless.</p>
+
+  <div class="mode-tabs">
+    <button type="button" class="mode-tab active" data-mode="endless">Endless</button>
+    <button type="button" class="mode-tab" data-mode="best5">Best of 5</button>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score-cell">
+      <div class="score-label">You</div>
+      <div class="score-value" id="scoreYou">0</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-label">CPU</div>
+      <div class="score-value" id="scoreCpu">0</div>
+    </div>
+    <div class="score-cell">
+      <div class="score-label">Ties</div>
+      <div class="score-value" id="scoreTies">0</div>
+    </div>
+    <button type="button" class="tool-btn" id="resetScoreBtn">Reset Score</button>
+  </div>
+
+  <div class="match-banner" id="matchBanner" hidden></div>
+
+  <div class="choice-row" id="choiceRow">
+    <button type="button" class="choice-btn" data-choice="rock" aria-label="Rock"><i class="fa-solid fa-hand-back-fist"></i><span>Rock</span></button>
+    <button type="button" class="choice-btn" data-choice="paper" aria-label="Paper"><i class="fa-solid fa-hand"></i><span>Paper</span></button>
+    <button type="button" class="choice-btn" data-choice="scissors" aria-label="Scissors"><i class="fa-solid fa-hand-scissors"></i><span>Scissors</span></button>
+  </div>
+
+  <p class="hint" id="rpsHint">Make a choice above to play your first round.</p>
+
+  <div class="result-area" id="resultArea" hidden>
+    <div class="face-off">
+      <div class="face-card you">
+        <div class="face-label">You</div>
+        <i class="fa-solid" id="youIcon"></i>
+      </div>
+      <div class="vs-label">VS</div>
+      <div class="face-card cpu">
+        <div class="face-label">CPU</div>
+        <i class="fa-solid" id="cpuIcon"></i>
+      </div>
+    </div>
+    <div class="result-verdict" id="resultVerdict"></div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    const SCORE_KEY = 'rps_score';
+    const CHOICES = ['rock', 'paper', 'scissors'];
+    const BEATS = { rock: 'scissors', paper: 'rock', scissors: 'paper' };
+    const ICONS = { rock: 'fa-hand-back-fist', paper: 'fa-hand', scissors: 'fa-hand-scissors' };
+    const LABELS = { rock: 'Rock', paper: 'Paper', scissors: 'Scissors' };
+
+    function loadScore() {
+      try {
+        const p = JSON.parse(localStorage.getItem(SCORE_KEY));
+        if (p && typeof p === 'object') {
+          return { you: Number(p.you) || 0, cpu: Number(p.cpu) || 0, ties: Number(p.ties) || 0 };
+        }
+      } catch {}
+      return { you: 0, cpu: 0, ties: 0 };
+    }
+    function saveScore() { localStorage.setItem(SCORE_KEY, JSON.stringify(lifetimeScore)); }
+
+    let lifetimeScore = loadScore();
+    let mode = 'endless';
+    let match = { you: 0, cpu: 0, active: true };
+
+    const scoreYou = document.getElementById('scoreYou');
+    const scoreCpu = document.getElementById('scoreCpu');
+    const scoreTies = document.getElementById('scoreTies');
+    const resetScoreBtn = document.getElementById('resetScoreBtn');
+    const matchBanner = document.getElementById('matchBanner');
+    const choiceButtons = Array.from(document.querySelectorAll('.choice-btn'));
+    const resultArea = document.getElementById('resultArea');
+    const rpsHint = document.getElementById('rpsHint');
+    const youIcon = document.getElementById('youIcon');
+    const cpuIcon = document.getElementById('cpuIcon');
+    const resultVerdict = document.getElementById('resultVerdict');
+
+    function renderScoreboard() {
+      scoreYou.textContent = lifetimeScore.you;
+      scoreCpu.textContent = lifetimeScore.cpu;
+      scoreTies.textContent = lifetimeScore.ties;
+    }
+
+    function resetMatch() { match = { you: 0, cpu: 0, active: true }; }
+
+    function renderMatchStatus() {
+      if (mode !== 'best5') { matchBanner.hidden = true; choiceButtons.forEach(b => b.disabled = false); return; }
+      matchBanner.hidden = false;
+      if (match.active) {
+        matchBanner.className = 'match-banner';
+        matchBanner.innerHTML = `<span>First to 5 wins — You ${match.you} : CPU ${match.cpu}</span>`;
+      } else {
+        const youWon = match.you > match.cpu;
+        matchBanner.className = `match-banner decided`;
+        matchBanner.innerHTML = `
+          <span>${youWon ? 'You won the match' : 'CPU won the match'} ${match.you}-${match.cpu}!</span>
+          <button type="button" class="primary-btn" id="playAgainBtn">Play Again</button>
+        `;
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+          resetMatch();
+          resultArea.classList.remove('reveal');
+          renderMatchStatus();
+        });
+      }
+      choiceButtons.forEach(b => b.disabled = !match.active);
+    }
+
+    function showResult(youChoice, cpuChoice, outcome) {
+      rpsHint.hidden = true;
+      resultArea.hidden = false;
+      youIcon.className = `fa-solid ${ICONS[youChoice]}`;
+      cpuIcon.className = `fa-solid ${ICONS[cpuChoice]}`;
+      resultVerdict.textContent = outcome === 'tie'
+        ? `Tie — you both chose ${LABELS[youChoice]}`
+        : outcome === 'win'
+          ? `You win! ${LABELS[youChoice]} beats ${LABELS[cpuChoice]}`
+          : `You lose. ${LABELS[cpuChoice]} beats ${LABELS[youChoice]}`;
+      resultVerdict.className = `result-verdict ${outcome}`;
+
+      // Force a reflow between removing and re-adding the class so the reveal
+      // animation replays even when this round's outcome/icons are identical
+      // to the previous round's (same class already present would be a no-op).
+      resultArea.classList.remove('reveal');
+      void resultArea.offsetWidth;
+      resultArea.classList.add('reveal');
+    }
+
+    function playRound(youChoice) {
+      if (mode === 'best5' && !match.active) return;
+      const cpuChoice = CHOICES[secureRandomInt(3)];
+      let outcome;
+      if (youChoice === cpuChoice) outcome = 'tie';
+      else if (BEATS[youChoice] === cpuChoice) outcome = 'win';
+      else outcome = 'lose';
+
+      if (outcome === 'win') lifetimeScore.you++;
+      else if (outcome === 'lose') lifetimeScore.cpu++;
+      else lifetimeScore.ties++;
+      saveScore();
+
+      if (mode === 'best5') {
+        if (outcome === 'win') match.you++;
+        else if (outcome === 'lose') match.cpu++;
+        if (match.you >= 5 || match.cpu >= 5) match.active = false;
+      }
+
+      showResult(youChoice, cpuChoice, outcome);
+      renderScoreboard();
+      renderMatchStatus();
+    }
+
+    choiceButtons.forEach(btn => {
+      btn.addEventListener('click', () => playRound(btn.dataset.choice));
+    });
+
+    resetScoreBtn.addEventListener('click', () => {
+      if (!confirm('Reset your lifetime score (You/CPU/Ties) back to zero?')) return;
+      lifetimeScore = { you: 0, cpu: 0, ties: 0 };
+      saveScore();
+      renderScoreboard();
+    });
+
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        mode = tab.dataset.mode;
+        resetMatch();
+        resultArea.classList.remove('reveal');
+        renderMatchStatus();
+      });
+    });
+
+    renderScoreboard();
+    renderMatchStatus();
+  </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6b7280"/><stop offset="1" stop-color="#111827"/></linearGradient></defs>
+  <rect width="600" height="600" fill="url(#g)"/>
+  <g opacity="0.9">
+    <rect x="230" y="150" width="46" height="46" fill="#ffffff"/>
+    <rect x="322" y="150" width="46" height="46" fill="#ffffff"/>
+    <rect x="276" y="196" width="46" height="46" fill="#ffffff"/>
+    <rect x="230" y="242" width="46" height="46" fill="#ffffff"/>
+    <rect x="322" y="242" width="46" height="46" fill="#ffffff"/>
+  </g>
+  <text x="300" y="410" font-family="'Segoe UI', Arial, sans-serif" font-size="82" font-weight="800" fill="#f3f4f6" text-anchor="middle">lichess</text>
+</svg>

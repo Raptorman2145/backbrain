@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Age Calculator</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body { font-family: system-ui, sans-serif; min-height: 100vh; padding: 24px clamp(16px, 4vw, 48px); background: var(--bg); color: var(--text); }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 22px;
+  }
+  .mode-tab {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    font-family: inherit;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-bottom: -1px;
+  }
+  .mode-tab:hover { color: var(--text); }
+  .mode-tab.active { color: var(--accent-bg); border-bottom-color: var(--accent-bg); }
+
+  .mode-panel { display: none; max-width: 640px; }
+  .mode-panel.active { display: block; }
+
+  .calc-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 6px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; color: var(--text-muted); }
+  .field input[type="date"] {
+    padding: 9px 11px;
+    font-size: 14px;
+    background: var(--surface);
+    min-width: 170px;
+    max-width: 100%;
+  }
+
+  .calc-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    cursor: pointer;
+    height: 38px;
+  }
+  .calc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  button:focus-visible, input:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+  input:focus {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  .hint { color: var(--text-muted); font-size: 13px; margin: 4px 0 0; }
+  .error-msg { color: var(--accent-bg); font-size: 13px; margin: 4px 0 0; }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .result-grid[hidden] { display: none; }
+  .stat-card {
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: var(--accent-bg);
+    word-break: break-word;
+  }
+</style>
+</head>
+<body>
+  <h1>Age Calculator</h1>
+  <p class="sub">Exact age, birthday countdown, and days between two dates.</p>
+
+  <div class="mode-tabs">
+    <button type="button" class="mode-tab active" data-mode="age">Age</button>
+    <button type="button" class="mode-tab" data-mode="between">Days Between Dates</button>
+  </div>
+
+  <div class="mode-panel active" id="panel-age">
+    <form id="ageForm" class="calc-form">
+      <div class="field">
+        <label for="birthDateInput">Birthdate</label>
+        <input type="date" id="birthDateInput" class="tool-input" required>
+      </div>
+      <button type="submit" class="calc-btn" id="ageCalcBtn" disabled>Calculate</button>
+    </form>
+    <p class="hint" id="ageHint">Enter your birthdate to see your exact age.</p>
+    <p class="error-msg" id="ageError" hidden></p>
+
+    <div class="result-grid" id="ageResults" hidden>
+      <div class="stat-card">
+        <div class="stat-label">Exact age</div>
+        <div class="stat-value" id="ageExact">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total days lived</div>
+        <div class="stat-value" id="ageTotalDays">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Next birthday</div>
+        <div class="stat-value" id="ageNextBirthday">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Born on a</div>
+        <div class="stat-value" id="ageWeekday">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mode-panel" id="panel-between">
+    <form id="betweenForm" class="calc-form">
+      <div class="field">
+        <label for="dateAInput">First date</label>
+        <input type="date" id="dateAInput" class="tool-input" required>
+      </div>
+      <div class="field">
+        <label for="dateBInput">Second date</label>
+        <input type="date" id="dateBInput" class="tool-input" required>
+      </div>
+      <button type="submit" class="calc-btn" id="betweenCalcBtn" disabled>Calculate</button>
+    </form>
+    <p class="hint" id="betweenHint">Enter both dates to see how far apart they are.</p>
+    <p class="error-msg" id="betweenError" hidden></p>
+
+    <div class="result-grid" id="betweenResults" hidden>
+      <div class="stat-card">
+        <div class="stat-label">Total days apart</div>
+        <div class="stat-value" id="betweenTotalDays">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">In weeks</div>
+        <div class="stat-value" id="betweenWeeks">—</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(`panel-${tab.dataset.mode}`).classList.add('active');
+      });
+    });
+
+    const MS_PER_DAY = 86400000;
+    const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+    // Dates are parsed/compared entirely via their UTC y/m/d fields (never
+    // getDate()/getDay() etc.), so a date-only string like "1990-05-14" means
+    // the same calendar day in every visitor's timezone. Mixing in local-time
+    // getters here would shift the weekday/age by a day for anyone west of
+    // UTC around midnight.
+    function parseDateOnly(value) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+      if (!m) return null;
+      const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+      const date = new Date(Date.UTC(y, mo - 1, d));
+      if (date.getUTCFullYear() !== y || date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d) return null;
+      return date;
+    }
+
+    function todayUTC() {
+      const now = new Date();
+      return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    }
+
+    function daysInMonth(year, monthIndex) {
+      return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+    }
+
+    function ageBreakdown(birth, today) {
+      let years = today.getUTCFullYear() - birth.getUTCFullYear();
+      let months = today.getUTCMonth() - birth.getUTCMonth();
+      let days = today.getUTCDate() - birth.getUTCDate();
+      if (days < 0) {
+        months--;
+        const prevMonthIndex = today.getUTCMonth() - 1;
+        const y = prevMonthIndex < 0 ? today.getUTCFullYear() - 1 : today.getUTCFullYear();
+        const m = (prevMonthIndex + 12) % 12;
+        days += daysInMonth(y, m);
+      }
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+      return { years, months, days };
+    }
+
+    // Clamps Feb 29 birthdates to Feb 28 in non-leap years, so someone born
+    // on a leap day still gets a sensible "next birthday" every year.
+    function birthdayInYear(birth, year) {
+      const month = birth.getUTCMonth();
+      const day = birth.getUTCDate();
+      const clampedDay = Math.min(day, daysInMonth(year, month));
+      return new Date(Date.UTC(year, month, clampedDay));
+    }
+
+    function nextBirthday(birth, today) {
+      let candidate = birthdayInYear(birth, today.getUTCFullYear());
+      if (candidate.getTime() < today.getTime()) {
+        candidate = birthdayInYear(birth, today.getUTCFullYear() + 1);
+      }
+      return candidate;
+    }
+
+    function formatLongDate(date) {
+      return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+    }
+
+    function formatCount(n, singular, plural) {
+      return `${n.toLocaleString()} ${n === 1 ? singular : plural}`;
+    }
+
+    // ================= Age mode =================
+    const birthDateInput = document.getElementById('birthDateInput');
+    const ageForm = document.getElementById('ageForm');
+    const ageCalcBtn = document.getElementById('ageCalcBtn');
+    const ageHint = document.getElementById('ageHint');
+    const ageError = document.getElementById('ageError');
+    const ageResults = document.getElementById('ageResults');
+    const ageExact = document.getElementById('ageExact');
+    const ageTotalDays = document.getElementById('ageTotalDays');
+    const ageNextBirthday = document.getElementById('ageNextBirthday');
+    const ageWeekday = document.getElementById('ageWeekday');
+
+    birthDateInput.max = todayUTC().toISOString().slice(0, 10);
+
+    function setAgeState(state, message) {
+      ageHint.hidden = state !== 'hint';
+      ageError.hidden = state !== 'error';
+      ageResults.hidden = state !== 'ok';
+      if (message) ageError.textContent = message;
+    }
+
+    function computeAge() {
+      const raw = birthDateInput.value;
+      if (!raw) { setAgeState('hint'); return; }
+
+      const birth = parseDateOnly(raw);
+      const today = todayUTC();
+      if (!birth) { setAgeState('error', "That doesn't look like a valid date."); return; }
+      if (birth.getTime() > today.getTime()) { setAgeState('error', "Birthdate can't be in the future."); return; }
+
+      const { years, months, days } = ageBreakdown(birth, today);
+      ageExact.textContent = `${years}y ${months}m ${days}d`;
+
+      const totalDays = Math.round((today.getTime() - birth.getTime()) / MS_PER_DAY);
+      ageTotalDays.textContent = formatCount(totalDays, 'day', 'days');
+
+      const next = nextBirthday(birth, today);
+      const daysUntil = Math.round((next.getTime() - today.getTime()) / MS_PER_DAY);
+      ageNextBirthday.textContent = daysUntil === 0
+        ? `Today! (${formatLongDate(next)})`
+        : `${formatCount(daysUntil, 'day', 'days')} (${formatLongDate(next)})`;
+
+      ageWeekday.textContent = WEEKDAYS[birth.getUTCDay()];
+      setAgeState('ok');
+    }
+
+    birthDateInput.addEventListener('input', () => {
+      ageCalcBtn.disabled = birthDateInput.value.trim() === '';
+    });
+    birthDateInput.addEventListener('change', computeAge);
+    ageForm.addEventListener('submit', e => {
+      e.preventDefault();
+      computeAge();
+    });
+
+    // ================= Days Between mode =================
+    const dateAInput = document.getElementById('dateAInput');
+    const dateBInput = document.getElementById('dateBInput');
+    const betweenForm = document.getElementById('betweenForm');
+    const betweenCalcBtn = document.getElementById('betweenCalcBtn');
+    const betweenHint = document.getElementById('betweenHint');
+    const betweenError = document.getElementById('betweenError');
+    const betweenResults = document.getElementById('betweenResults');
+    const betweenTotalDays = document.getElementById('betweenTotalDays');
+    const betweenWeeks = document.getElementById('betweenWeeks');
+
+    function setBetweenState(state, message) {
+      betweenHint.hidden = state !== 'hint';
+      betweenError.hidden = state !== 'error';
+      betweenResults.hidden = state !== 'ok';
+      if (message) betweenError.textContent = message;
+    }
+
+    function updateBetweenButtonState() {
+      betweenCalcBtn.disabled = !dateAInput.value.trim() || !dateBInput.value.trim();
+    }
+
+    function computeBetween() {
+      if (!dateAInput.value || !dateBInput.value) { setBetweenState('hint'); return; }
+
+      const a = parseDateOnly(dateAInput.value);
+      const b = parseDateOnly(dateBInput.value);
+      if (!a || !b) { setBetweenState('error', 'Please enter two valid dates.'); return; }
+
+      const totalDays = Math.round(Math.abs(b.getTime() - a.getTime()) / MS_PER_DAY);
+      const weeks = Math.floor(totalDays / 7);
+      const remainder = totalDays % 7;
+
+      betweenTotalDays.textContent = formatCount(totalDays, 'day', 'days');
+      betweenWeeks.textContent = totalDays === 0
+        ? 'Same date'
+        : `${formatCount(weeks, 'week', 'weeks')}${remainder ? ` and ${formatCount(remainder, 'day', 'days')}` : ''}`;
+
+      setBetweenState('ok');
+    }
+
+    [dateAInput, dateBInput].forEach(input => {
+      input.addEventListener('input', () => {
+        updateBetweenButtonState();
+      });
+      input.addEventListener('change', computeBetween);
+    });
+    updateBetweenButtonState();
+
+    betweenForm.addEventListener('submit', e => {
+      e.preventDefault();
+      computeBetween();
+    });
+  </script>
+</body>
+</html>

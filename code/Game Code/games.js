@@ -1,10 +1,12 @@
 // "url" is the game's real, official site - where clicking a card actually
-// launches it (opens in a new tab so the portal itself stays open). The six
-// "emulator"-tagged entries are left without one on purpose: there's no
-// legitimate free ROM/emulator source to point them at, and linking to a
-// piracy-adjacent ROM site to make them "work" isn't worth doing - the
-// card just shows as not-yet-launchable instead. See render()/cardClick()
-// below for how the two states differ.
+// launches it (opens in a new tab so the portal itself stays open). Five of
+// the classic console titles below (Mario, Zelda, Sonic, Street Fighter II,
+// Donkey Kong) are deliberately left without one: there's no legitimate free
+// browser version to point them at, and linking a piracy-adjacent ROM/emulator
+// site to make them "work" isn't worth doing - the card just shows as
+// not-yet-launchable instead (see render() and the no-launch note below).
+// Pac-Man is the exception among the classics: Google's official 30th-
+// anniversary version is free and legal to link, so it launches like the rest.
 const cards = [
   { id: 1, title: "Agar.io", dateAdded: "2026-07-03", image: "images/agar-io.png", url: "https://agar.io",
     tags: ["multiplayer", "arcade", "web"], description: "Grow a cell by absorbing smaller players in this browser-based multiplayer arena.",
@@ -33,8 +35,8 @@ const cards = [
   { id: 9, title: "Diep.io", dateAdded: "2026-07-03", image: "images/diep-io.svg", url: "https://diep.io",
     tags: ["multiplayer", "shooter", "web"], description: "Upgrade a tank through branching classes while battling other players.",
     developer: "Matheus Valadares" },
-  { id: 10, title: "Pac-Man", dateAdded: "2026-07-03", image: "images/pac-man.svg", url: null,
-    tags: ["arcade", "classic", "emulator"], description: "The original maze-chase arcade game, gobbling dots while dodging ghosts.",
+  { id: 10, title: "Pac-Man", dateAdded: "2026-07-03", image: "images/pac-man.svg", url: "https://www.google.com/logos/2010/pacman10-i.html",
+    tags: ["arcade", "classic", "web"], description: "The maze-chase arcade classic, playable free via Google's official 30th-anniversary version.",
     developer: "Namco" },
   { id: 11, title: "Street Fighter II", dateAdded: "2026-07-03", image: "images/street-fighter-ii.svg", url: null,
     tags: ["fighting", "classic", "emulator"], description: "The arcade fighter that defined one-on-one competitive fighting games.",
@@ -42,6 +44,42 @@ const cards = [
   { id: 12, title: "Donkey Kong", dateAdded: "2026-07-03", image: "images/donkey-kong.svg", url: null,
     tags: ["platformer", "classic", "emulator"], description: "The arcade original where Mario (then \"Jumpman\") first climbed to save Pauline.",
     developer: "Nintendo" },
+  { id: 13, title: "Krunker.io", dateAdded: "2026-07-18", image: "images/krunker-io.svg", url: "https://krunker.io",
+    tags: ["shooter", "multiplayer", "web"], description: "A fast, blocky browser FPS with classes, movement tricks, and public arenas.",
+    developer: "Yendis Entertainment" },
+  { id: 14, title: "Shell Shockers", dateAdded: "2026-07-18", image: "images/shell-shockers.svg", url: "https://shellshock.io",
+    tags: ["shooter", "multiplayer", "web"], description: "An online FPS where everyone is a heavily armed egg trying not to crack.",
+    developer: "Blue Wizard Digital" },
+  { id: 15, title: "Skribbl.io", dateAdded: "2026-07-18", image: "images/skribbl-io.svg", url: "https://skribbl.io",
+    tags: ["drawing", "multiplayer", "web"], description: "Take turns drawing a secret word while everyone else races to guess it.",
+    developer: "skribbl.io" },
+  { id: 16, title: "Tetr.io", dateAdded: "2026-07-18", image: "images/tetrio.svg", url: "https://tetr.io",
+    tags: ["puzzle", "multiplayer", "web"], description: "Competitive modern Tetris with online multiplayer and configurable handling.",
+    developer: "osk" },
+  { id: 17, title: "Lichess", dateAdded: "2026-07-18", image: "images/lichess.svg", url: "https://lichess.org",
+    tags: ["strategy", "multiplayer", "web"], description: "Free, open-source chess: play, learn, solve puzzles, and analyze your games.",
+    developer: "Lichess (open source)" },
+  { id: 18, title: "Gartic Phone", dateAdded: "2026-07-18", image: "images/gartic-phone.svg", url: "https://garticphone.com",
+    tags: ["drawing", "multiplayer", "web"], description: "Broken-telephone with drawings - write a prompt, then watch it mutate hilariously.",
+    developer: "Onrizon Social Games" },
+  { id: 19, title: "Powerline.io", dateAdded: "2026-07-18", image: "images/powerline-io.svg", url: "https://powerline.io",
+    tags: ["arcade", "multiplayer", "web"], description: "A neon take on Snake - grow the longest and cut off rivals in a shared arena.",
+    developer: "powerline.io" },
+  { id: 20, title: "MooMoo.io", dateAdded: "2026-07-18", image: "images/moomoo-io.svg", url: "https://moomoo.io",
+    tags: ["survival", "multiplayer", "web"], description: "Gather resources, build a base, and defend it in this survival .io game.",
+    developer: "Sidney de Vries" },
+  { id: 21, title: "1v1.LOL", dateAdded: "2026-07-18", image: "images/1v1-lol.svg", url: "https://1v1.lol",
+    tags: ["shooter", "multiplayer", "web"], description: "Build-and-battle third-person shooter with quick 1v1 and battle-royale modes.",
+    developer: "JustPlay.LOL" },
+  { id: 22, title: "Territorial.io", dateAdded: "2026-07-18", image: "images/territorial-io.svg", url: "https://territorial.io",
+    tags: ["strategy", "multiplayer", "web"], description: "Simple, huge-scale territory conquest against hundreds of bots and players.",
+    developer: "territorial.io" },
+  { id: 23, title: "Hextris", dateAdded: "2026-07-18", image: "images/hextris.svg", url: "https://hextris.io",
+    tags: ["puzzle", "singleplayer", "web"], description: "A hexagonal spin on falling-block puzzles - rotate the hub to match colors.",
+    developer: "Hextris (open source)" },
+  { id: 24, title: "Sudoku", dateAdded: "2026-07-18", image: "images/sudoku.svg", url: "https://sudoku.com",
+    tags: ["puzzle", "singleplayer", "web"], description: "Classic number-placement puzzles across a range of difficulty levels.",
+    developer: "Easybrain" },
 ];
 
 const RESERVED_TAGS = ["web", "emulator", "favorite"];
@@ -89,6 +127,42 @@ cards.forEach(card => {
     card.tags.push("favorite");
   }
 });
+
+// --- Recently played ---
+// Recorded when a launchable card is actually opened (see launchCard). Newest
+// first, de-duped, capped - powers the "Recently Played" tab. Stored as bare
+// ids and resolved back to cards at render time, so a removed game just drops
+// out of the list on its own.
+const RECENT_STORAGE_KEY = "gameRecentlyPlayed";
+const RECENT_LIMIT = 12;
+
+function loadRecentIds() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(RECENT_STORAGE_KEY));
+    if (Array.isArray(parsed)) return parsed.filter(id => Number.isInteger(id));
+  } catch {}
+  return [];
+}
+
+function recordRecentlyPlayed(id) {
+  const ids = loadRecentIds().filter(existing => existing !== id);
+  ids.unshift(id);
+  try { localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(ids.slice(0, RECENT_LIMIT))); } catch {}
+}
+
+// Touch devices have no hover to reveal a card's info overlay, so there the
+// first tap reveals it and the second launches (see the click handler in
+// render). matchMedia is the reliable "is this a hover-capable pointer" test.
+const canHover = window.matchMedia("(hover: hover)").matches;
+
+// Shared by mouse click, the touch second-tap, and keyboard Enter/Space so all
+// three launch identically and all record recency.
+function launchCard(card) {
+  history.replaceState(null, "", `#game-${card.id}`);
+  if (!card.url) return;
+  recordRecentlyPlayed(card.id);
+  window.open(card.url, "_blank", "noopener");
+}
 
 tabsEl.addEventListener("click", e => {
   const btn = e.target.closest(".tab");
@@ -219,9 +293,13 @@ function setupVirtualizationObservers() {
 setupVirtualizationObservers();
 
 function cardsInActiveCategory() {
-  return activeCategory === "all"
-    ? cards
-    : cards.filter(card => card.tags.includes(activeCategory));
+  if (activeCategory === "all") return cards;
+  // "recent" isn't a tag - it's the recency list, resolved to cards in order
+  // (newest first). filter(Boolean) drops any id whose game no longer exists.
+  if (activeCategory === "recent") {
+    return loadRecentIds().map(id => cards.find(card => card.id === id)).filter(Boolean);
+  }
+  return cards.filter(card => card.tags.includes(activeCategory));
 }
 
 function renderTagOptions() {
@@ -256,6 +334,15 @@ clearSearchEl.addEventListener("click", () => {
 
 searchEl.addEventListener("input", sortAndRender);
 
+// Touch: tapping anywhere outside a card dismisses an open info overlay, the
+// same way tapping another card swaps it (a no-op on hover devices, which
+// never add the info-open class in the first place).
+document.addEventListener("click", e => {
+  if (!e.target.closest(".game-card")) {
+    gridEl.querySelectorAll(".game-card.info-open").forEach(card => card.classList.remove("info-open"));
+  }
+});
+
 sortByEl.addEventListener("change", sortAndRender);
 sortDirEl.addEventListener("click", () => {
   ascending = !ascending;
@@ -275,7 +362,7 @@ function render(data) {
   }
 
   gridEl.innerHTML = data.map((card, i) => `
-    <div class="game-card${card.url ? "" : " no-launch"}" id="game-${card.id}" data-loaded="false" style="--i:${i}">
+    <div class="game-card${card.url ? "" : " no-launch"}" id="game-${card.id}" data-loaded="false" style="--i:${i}" role="button" tabindex="0" aria-label="${card.title}${card.url ? "" : " (not launchable yet)"}">
       <img alt="${card.title}">
       <div class="scrim"></div>
       <div class="title">${card.title}</div>
@@ -296,8 +383,26 @@ function render(data) {
     const card = data[i];
     cardData.set(cardEl, card);
     cardEl.addEventListener("click", () => {
-      history.replaceState(null, "", `#game-${card.id}`);
-      if (card.url) window.open(card.url, "_blank", "noopener");
+      // Touch (no hover): first tap reveals the info overlay, second tap
+      // launches. Desktop launches immediately - its info shows on hover.
+      if (!canHover && !cardEl.classList.contains("info-open")) {
+        gridEl.querySelectorAll(".game-card.info-open").forEach(other => {
+          if (other !== cardEl) other.classList.remove("info-open");
+        });
+        cardEl.classList.add("info-open");
+        return;
+      }
+      launchCard(card);
+    });
+
+    cardEl.addEventListener("keydown", e => {
+      // Only when the card itself is focused - not the favorite button inside
+      // it, which has its own native activation.
+      if (e.target !== cardEl) return;
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        launchCard(card);
+      }
     });
 
     const favoriteBtn = cardEl.querySelector(".favorite-btn");
@@ -327,8 +432,14 @@ function sortAndRender() {
     [...selectedTags].every(tag => card.tags.includes(tag))
   );
 
+  // The Recently Played tab is inherently ordered by recency, so the sort
+  // controls don't apply there - keep that order and grey the controls out.
+  const isRecent = activeCategory === "recent";
+  sortByEl.disabled = isRecent;
+  sortDirEl.disabled = isRecent;
+
   const key = sortByEl.value;
-  const sorted = filtered.sort((a, b) => {
+  const sorted = isRecent ? filtered : filtered.sort((a, b) => {
     const result = key === "title" ? a.title.localeCompare(b.title) : a.dateAdded.localeCompare(b.dateAdded) || (a.id - b.id);
     return ascending ? result : -result;
   });

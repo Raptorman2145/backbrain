@@ -28,7 +28,53 @@
   --shadow-md: 0 14px 28px rgba(0, 0, 0, 0.45);
 }
 
+/* Locally-hosted theme fonts. These are free-to-use fan-made recreations
+   (not the actual proprietary game fonts, e.g. Nintendo's real Wii UI font
+   or Mojang's real Minecraft font), but closer in spirit than the Google
+   Fonts stand-ins the other themes use — see FONT_GOOGLE_PARAMS in
+   sidebar.js for those. Only the active theme's font is ever applied to the
+   page, so an unused @font-face here never triggers a download - browsers
+   fetch a font file lazily, only once matching text is actually rendered. */
+@font-face {
+  font-family: "Minecraft";
+  src: url("../../images/fonts/minecraft.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nintendo DS BIOS";
+  src: url("../../images/fonts/nintendo-ds-bios.ttf") format("truetype");
+  font-display: swap;
+}
+@font-face {
+  font-family: "The Wild Breath of Zelda";
+  src: url("../../images/fonts/the-wild-breath-of-zelda.otf") format("opentype");
+  font-display: swap;
+}
+/* Monster Friend ships as a Back/Fore pair meant to be layered for a thick
+   hand-drawn look - not practical for a single site-wide body font-family,
+   so only the more legible Fore layer is wired in here. The Back layer's
+   file is still kept in images/fonts/ in case a future two-layer treatment
+   uses it. */
+@font-face {
+  font-family: "Monster Friend";
+  src: url("../../images/fonts/monster-friend-fore.otf") format("opentype");
+  font-display: swap;
+}
+
 * { box-sizing: border-box; }
+
+/* Pinned in rem (relative to the root <html> element, which no theme ever
+   resizes) rather than left at the browser default 2em. Most pages only set
+   `h1 { margin-bottom: 4px; }` with no font-size of their own, so h1 relies
+   entirely on that UA default - which is relative to body's OWN font-size.
+   Per-theme font sizing (Settings > Appearance, e.g. Wii/Undertale) changes
+   body's font-size directly, and 2em against a much larger or smaller body
+   size would blow the heading up or shrink it far more than intended. 2rem
+   matches the default 16px-body look exactly, so this only changes anything
+   for the themes that actually override body's font-size. Pages with their
+   own explicit h1 font-size (404.html, Games.html's mobile breakpoint)
+   still win via normal source-order/specificity, unaffected by this. */
+h1 { font-size: 2rem; }
 
 /* Every page here is a full reload (no client-side routing), so this softens
    the abrupt cut between pages a little. Kept short and on opacity only —
@@ -76,7 +122,15 @@ body::before {
   left: 0;
   height: 100vh;
   width: 40px;
-  z-index: 9;
+  /* Deliberately absurd - needs to beat every z-index used anywhere on the
+     site, including index.html's HUD bar overlay (999999, the highest
+     anywhere else), so no page's own fixed/overlay content can ever sit on
+     top of the sidebar's hover strip or its sliding panel again. Kept below
+     .site-search-overlay's actual max (2147483647) on purpose: that's a
+     full-screen modal the sidebar itself opens, and should still win if the
+     two ever visually coincide. .sidebar-panel is a plain absolutely-
+     positioned child, so it inherits this same stacking level. */
+  z-index: 999999999;
 }
 .sidebar-panel {
   position: absolute;
@@ -95,7 +149,11 @@ body::before {
   transform: translateX(calc(-100% + 16px));
   transition: transform 0.3s ease;
 }
-.sidebar-zone:hover .sidebar-panel {
+/* :hover has no reliable equivalent on touch devices - sidebar.js adds a
+   tap-to-toggle .sidebar-open class as a fallback so a touch-only visitor
+   (most pages here have no other navigation at all) can still open this. */
+.sidebar-zone:hover .sidebar-panel,
+.sidebar-zone.sidebar-open .sidebar-panel {
   transform: translateX(0);
 }
 .sidebar-logo {
@@ -325,6 +383,7 @@ body::before {
   font-size: 14px;
   transition: transform 0.3s ease;
 }
-.sidebar-zone:hover .sidebar-chevron {
+.sidebar-zone:hover .sidebar-chevron,
+.sidebar-zone.sidebar-open .sidebar-chevron {
   transform: translateY(-50%) rotate(180deg);
 }

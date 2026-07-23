@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Number Guesser</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .settings-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin-bottom: 6px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; color: var(--text-muted); }
+  .field input {
+    width: min(100px, 32vw);
+    box-sizing: border-box;
+    padding: 8px 10px;
+    font-size: 14px;
+    background: var(--surface);
+  }
+  .settings-row button.tool-btn {
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    border-color: var(--accent-bg);
+  }
+  .settings-row button.tool-btn:hover { filter: brightness(1.08); }
+
+  .settings-error {
+    color: var(--accent-bg);
+    font-size: 13px;
+    margin: 8px 0 0;
+  }
+  .settings-error[hidden] { display: none; }
+
+  .range-hint, .best-hint { color: var(--text-muted); font-size: 13px; margin: 14px 0 4px; }
+
+  #guessForm { display: flex; flex-wrap: wrap; gap: 8px; max-width: 360px; margin: 18px 0 10px; }
+  #guessInput {
+    flex: 1;
+    min-width: 140px;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    font-size: 15px;
+    background: var(--surface);
+  }
+  #guessForm button.tool-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    border-color: var(--accent-bg);
+  }
+  #guessForm button.tool-btn:hover { filter: brightness(1.08); }
+  #guessForm button.tool-btn:disabled, #guessInput:disabled { opacity: 0.5; cursor: default; filter: none; }
+
+  .tool-input:focus-visible, .tool-btn:focus-visible {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  .feedback { min-height: 20px; font-size: 14px; font-weight: 600; margin: 0 0 6px; }
+  .feedback i { color: var(--accent-bg); margin-right: 6px; }
+  .guess-counter { color: var(--text-muted); font-size: 13px; margin: 0 0 18px; }
+
+  .win-banner {
+    max-width: 460px;
+    padding: 16px 18px;
+    margin-bottom: 24px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--accent-bg);
+  }
+  .win-banner[hidden] { display: none; }
+  .win-banner p { margin: 0 0 12px; font-weight: 700; color: var(--accent-bg); }
+
+  .history-title { font-size: 15px; margin: 4px 0 10px; }
+  .history-list { list-style: none; margin: 0; padding: 0; max-width: 360px; }
+  .history-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+  }
+  .history-row:first-child { color: var(--text); font-weight: 700; }
+  .history-row.result-correct .history-result { color: var(--accent-bg); font-weight: 700; }
+  .history-row i { margin-right: 5px; }
+  .empty-hint { color: var(--text-muted); font-size: 13px; }
+  .empty-hint[hidden] { display: none; }
+</style>
+</head>
+<body>
+  <h1>Number Guesser</h1>
+  <p class="sub">Guess the secret number in as few tries as possible.</p>
+
+  <form id="settingsForm" class="settings-row" novalidate>
+    <div class="field">
+      <label for="minInput">Min</label>
+      <input type="number" id="minInput" class="tool-input" value="1" step="1">
+    </div>
+    <div class="field">
+      <label for="maxInput">Max</label>
+      <input type="number" id="maxInput" class="tool-input" value="100" step="1">
+    </div>
+    <button type="submit" class="tool-btn" id="newGameBtn">New Game</button>
+  </form>
+  <p class="settings-error" id="settingsError" hidden></p>
+
+  <p class="range-hint" id="rangeHint"></p>
+  <p class="best-hint" id="bestHint"></p>
+
+  <form id="guessForm" novalidate>
+    <input type="number" id="guessInput" class="tool-input" placeholder="Enter your guess" autocomplete="off" inputmode="numeric">
+    <button type="submit" class="tool-btn" id="guessSubmitBtn">Guess</button>
+  </form>
+
+  <p class="feedback" id="feedback" aria-live="polite"></p>
+  <p class="guess-counter" id="guessCounter">Guesses: 0</p>
+
+  <div class="win-banner" id="winBanner" role="status" hidden>
+    <p id="winMessage"></p>
+    <button type="button" id="playAgainBtn" class="tool-btn">Play Again</button>
+  </div>
+
+  <h2 class="history-title">Guess History</h2>
+  <ul id="historyList" class="history-list"></ul>
+  <p class="empty-hint" id="emptyHint">No guesses yet.</p>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const settingsForm = document.getElementById("settingsForm");
+    const minInput = document.getElementById("minInput");
+    const maxInput = document.getElementById("maxInput");
+    const settingsError = document.getElementById("settingsError");
+    const rangeHint = document.getElementById("rangeHint");
+    const bestHint = document.getElementById("bestHint");
+    const guessForm = document.getElementById("guessForm");
+    const guessInput = document.getElementById("guessInput");
+    const guessSubmitBtn = document.getElementById("guessSubmitBtn");
+    const feedback = document.getElementById("feedback");
+    const guessCounter = document.getElementById("guessCounter");
+    const winBanner = document.getElementById("winBanner");
+    const winMessage = document.getElementById("winMessage");
+    const playAgainBtn = document.getElementById("playAgainBtn");
+    const historyList = document.getElementById("historyList");
+    const emptyHint = document.getElementById("emptyHint");
+
+    const BEST_KEY = "numberguesser_best";
+    const RESULT_LABEL = { higher: "Higher", lower: "Lower", correct: "Correct!" };
+    const RESULT_ICON = { higher: "fa-arrow-up", lower: "fa-arrow-down", correct: "fa-check" };
+
+    let rangeMin = 1;
+    let rangeMax = 100;
+    let secret = null;
+    let guesses = [];
+    let gameOver = false;
+
+    // Same rejection-sampled CSPRNG approach as Dice Roller / Wheel Spinner,
+    // so the secret number is a genuinely fair pick across the full range.
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function rangeKey(min, max) { return `${min}-${max}`; }
+
+    function loadBests() {
+      try {
+        const obj = JSON.parse(localStorage.getItem(BEST_KEY) || "{}");
+        return obj && typeof obj === "object" ? obj : {};
+      } catch { return {}; }
+    }
+    function saveBests(obj) { localStorage.setItem(BEST_KEY, JSON.stringify(obj)); }
+
+    function bestForRange(min, max) {
+      const v = loadBests()[rangeKey(min, max)];
+      return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+    }
+    function recordBest(min, max, count) {
+      const bests = loadBests();
+      const key = rangeKey(min, max);
+      if (!bests[key] || count < bests[key]) {
+        bests[key] = count;
+        saveBests(bests);
+        return true;
+      }
+      return false;
+    }
+
+    function showSettingsError(msg) {
+      settingsError.textContent = msg;
+      settingsError.hidden = false;
+    }
+
+    function parseRange() {
+      const min = Math.trunc(Number(minInput.value));
+      const max = Math.trunc(Number(maxInput.value));
+      if (!Number.isFinite(min) || !Number.isFinite(max)) {
+        showSettingsError("Min and max must both be numbers.");
+        return null;
+      }
+      if (max <= min) {
+        showSettingsError("Max must be greater than min.");
+        return null;
+      }
+      if (max - min > 1000000000) {
+        showSettingsError("Keep the range under a billion, for sanity's sake.");
+        return null;
+      }
+      settingsError.hidden = true;
+      return { min, max };
+    }
+
+    function updateBestHint() {
+      const best = bestForRange(rangeMin, rangeMax);
+      bestHint.textContent = best !== null
+        ? `Best for ${rangeMin}-${rangeMax}: ${best} guess${best === 1 ? "" : "es"}`
+        : `No best yet for ${rangeMin}-${rangeMax}.`;
+    }
+
+    function renderCounter() {
+      guessCounter.textContent = `Guesses: ${guesses.length}`;
+    }
+
+    function renderHistory() {
+      emptyHint.hidden = guesses.length > 0;
+      historyList.innerHTML = guesses.map(g => `
+        <li class="history-row result-${g.result}">
+          <span class="history-value">${g.value}</span>
+          <span class="history-result"><i class="fa-solid ${RESULT_ICON[g.result]}"></i>${RESULT_LABEL[g.result]}</span>
+        </li>
+      `).join("");
+    }
+
+    // Sets up a fresh secret for the given (already-committed) range without
+    // re-reading the min/max fields - so "Play Again" can't be quietly
+    // hijacked by a mid-game edit to those inputs that was never confirmed
+    // via New Game.
+    function beginRound(min, max) {
+      rangeMin = min;
+      rangeMax = max;
+      secret = rangeMin + secureRandomInt(rangeMax - rangeMin + 1);
+      guesses = [];
+      gameOver = false;
+
+      winBanner.hidden = true;
+      feedback.textContent = "";
+      guessInput.value = "";
+      guessInput.disabled = false;
+      guessInput.min = String(rangeMin);
+      guessInput.max = String(rangeMax);
+      guessSubmitBtn.disabled = false;
+      rangeHint.textContent = `Guess a number between ${rangeMin} and ${rangeMax}.`;
+
+      updateBestHint();
+      renderHistory();
+      renderCounter();
+      guessInput.focus();
+    }
+
+    function applyNewRange() {
+      const parsed = parseRange();
+      if (!parsed) return;
+      minInput.value = parsed.min;
+      maxInput.value = parsed.max;
+      beginRound(parsed.min, parsed.max);
+    }
+
+    settingsForm.addEventListener("submit", e => {
+      e.preventDefault();
+      applyNewRange();
+    });
+
+    guessForm.addEventListener("submit", e => {
+      e.preventDefault();
+      if (gameOver) return;
+
+      const raw = guessInput.value.trim();
+      const num = Number(raw);
+      if (raw === "" || !Number.isFinite(num) || !Number.isInteger(num)) {
+        feedback.innerHTML = "Enter a whole number.";
+        return;
+      }
+      if (num < rangeMin || num > rangeMax) {
+        feedback.innerHTML = `Stay between ${rangeMin} and ${rangeMax}.`;
+        return;
+      }
+
+      const result = num === secret ? "correct" : (num < secret ? "higher" : "lower");
+      guesses.unshift({ value: num, result });
+      renderHistory();
+      renderCounter();
+      guessInput.value = "";
+
+      if (result === "correct") {
+        endGame();
+      } else {
+        feedback.innerHTML = `<i class="fa-solid ${RESULT_ICON[result]}"></i>${result === "higher" ? "Higher than that." : "Lower than that."}`;
+        guessInput.focus();
+      }
+    });
+
+    function endGame() {
+      gameOver = true;
+      feedback.textContent = "";
+      guessInput.disabled = true;
+      guessSubmitBtn.disabled = true;
+
+      const count = guesses.length;
+      const isNewBest = recordBest(rangeMin, rangeMax, count);
+      winMessage.textContent = isNewBest
+        ? `Correct! You found ${secret} in ${count} guess${count === 1 ? "" : "es"} - a new best for this range!`
+        : `Correct! You found ${secret} in ${count} guess${count === 1 ? "" : "es"}.`;
+      winBanner.hidden = false;
+      updateBestHint();
+      playAgainBtn.focus();
+    }
+
+    playAgainBtn.addEventListener("click", () => beginRound(rangeMin, rangeMax));
+
+    applyNewRange();
+  </script>
+</body>
+</html>

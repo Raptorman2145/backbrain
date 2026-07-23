@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Home</title>
-<script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="code/CSS/shared.css">
@@ -66,7 +66,15 @@
         border-radius: 13px;
     }
 
-    #time-display { font-family: 'Orbitron', sans-serif; color: var(--glow-bright); text-shadow: 0 0 15px color-mix(in srgb, var(--glow-bright) 70%, transparent); }
+    /* These replace the Tailwind utility classes the HUD used to rely on, so
+       the page no longer needs the cdn.tailwindcss.com runtime bundle. */
+    #left-section { display: flex; flex-direction: column; }
+    #time-display { font-family: 'Orbitron', sans-serif; color: var(--glow-bright); text-shadow: 0 0 15px color-mix(in srgb, var(--glow-bright) 70%, transparent); font-size: 1.25rem; font-weight: 900; letter-spacing: -0.025em; }
+    #date-display { font-size: 10px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; }
+    #right-section { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+    #battery-level-text { font-size: 12px; font-weight: 900; }
+    #battery-shell { width: 28px; height: 14px; border: 1px solid var(--border-strong); border-radius: 3px; padding: 1px; display: flex; align-items: center; }
+    #battery-level-fill { height: 100%; border-radius: 2px; transition: all 0.5s; }
     .button-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; flex: 1; padding: 5px 0; }
     .icon-button { position: relative; width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; color: var(--primary-red); border: 1px solid color-mix(in srgb, var(--primary-red) 40%, transparent); background: color-mix(in srgb, var(--primary-red) 12%, black); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .icon-button:hover, .icon-button.active { background-color: var(--primary-red); color: white; box-shadow: 0 0 20px var(--glow-bright); transform: translateY(-3px); border-color: var(--glow-bright); }
@@ -77,12 +85,22 @@
 
     @media (max-width: 768px) {
         #left-section, #right-section { width: 45%; }
-        .button-container { width: 100%; order: 3; border-top: 1px solid color-mix(in srgb, var(--primary-red) 30%, transparent); padding-top: 15px; }
+        /* flex-basis (not width) is what flexbox actually uses to decide
+           whether an item fits on the current line or wraps - the base
+           `.button-container { flex: 1 }` rule sets flex-basis: 0%, which
+           left this un-set here. Without it, the button row's hypothetical
+           size reads as ~0, so it gets squeezed onto the SAME line as the
+           two 45%-wide sections instead of wrapping to its own full-width
+           row below them like the rest of this rule intends - it ends up a
+           few dozen px wide, wrapping all 5 icons into a narrow column
+           instead of a row and blowing up the header's height. */
+        .button-container { width: 100%; flex-basis: 100%; order: 3; border-top: 1px solid color-mix(in srgb, var(--primary-red) 30%, transparent); padding-top: 15px; }
         .icon-button { width: 38px; height: 38px; }
     }
 
     .hero {
         position: relative;
+        z-index: 1;
         flex: 1;
         display: flex;
         flex-direction: column;
@@ -127,15 +145,63 @@
         margin: 0;
     }
 
+    /* A dedicated backdrop for the homepage specifically (not the Settings ->
+       per-theme body::before in shared.css) - tinted with --bg via color-mix
+       so it reads as "this site, faintly" under any accent theme rather than
+       a fixed color that could clash if a theme changes --bg elsewhere. */
+    #particles-js {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        background-image:
+            linear-gradient(color-mix(in srgb, var(--bg) 85%, transparent), color-mix(in srgb, var(--bg) 85%, transparent)),
+            url('images/backgrounds/galaxy-bg.jpeg');
+        background-size: cover;
+        background-position: center;
+    }
+
+    .hero-most-used {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 4px;
+    }
+    .most-used-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--primary-red);
+        border: 1px solid color-mix(in srgb, var(--primary-red) 40%, transparent);
+        background: color-mix(in srgb, var(--primary-red) 12%, black);
+        text-decoration: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .most-used-pill:hover {
+        background-color: var(--primary-red);
+        color: white;
+        box-shadow: 0 0 15px var(--glow-bright);
+        transform: translateY(-2px);
+        border-color: var(--glow-bright);
+    }
+
 </style>
 </head>
 <body>
+  <div id="particles-js"></div>
+
   <div id="main-overlay">
     <div class="glow-container">
       <div id="top-bar">
-        <div id="left-section" class="flex flex-col">
-          <div id="time-display" class="text-xl font-black tracking-tight">--:--:--</div>
-          <div id="date-display" class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Loading...</div>
+        <div id="left-section">
+          <div id="time-display">--:--:--</div>
+          <div id="date-display">Loading...</div>
         </div>
 
         <nav class="button-container">
@@ -144,12 +210,13 @@
           <a href="Tabs/team.html" class="icon-button"><i class="fa-solid fa-people-group"></i><span class="tooltip-text">Our Team</span></a>
           <a href="Tabs/Tool%20Tabs/tools.html" class="icon-button"><i class="fa-solid fa-toolbox"></i><span class="tooltip-text">Tools</span></a>
           <a href="Tabs/credits.html" class="icon-button"><i class="fa-solid fa-triangle-exclamation"></i><span class="tooltip-text">Disclaimer</span></a>
+          <button type="button" id="homeSearchBtn" class="icon-button"><i class="fa-solid fa-magnifying-glass"></i><span class="tooltip-text">Search (Ctrl+K)</span></button>
         </nav>
 
-        <div id="right-section" class="flex items-center space-x-3 justify-end">
-          <p id="battery-level-text" class="text-xs font-black">--%</p>
-          <div id="battery-shell" class="w-7 h-3.5 border rounded-sm p-[1px] flex items-center">
-            <div id="battery-level-fill" class="h-full transition-all duration-500" style="width: 0%"></div>
+        <div id="right-section">
+          <p id="battery-level-text">--%</p>
+          <div id="battery-shell">
+            <div id="battery-level-fill" style="width: 0%"></div>
           </div>
         </div>
       </div>
@@ -161,10 +228,48 @@
     <img src="images/logo.png" alt="The Gamer's Backbrain" class="hero-logo" width="995" height="620">
     <p class="hero-tagline">Pick where you want to go.</p>
     <p class="hero-stats" id="heroStats">9 tools &middot; 9 team members</p>
+    <div class="hero-most-used" id="heroMostUsed"></div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/particles.js/2.0.0/particles.min.js"></script>
   <script src="code/General%20Code/sidebar.js"></script>
   <script>
+    // Reads the *effective* theme colors (sidebar.js's applySiteTheme() has
+    // already run by this point and may have overridden these on <html>
+    // inline) rather than hardcoding red, so the particles match whichever
+    // theme accent is active instead of always looking red.
+    function cssVar(name, fallback) {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return value || fallback;
+    }
+    const particleColor = cssVar('--glow-bright', '#ff3131');
+    const particleLineColor = cssVar('--primary-red', '#900000');
+
+    particlesJS('particles-js', {
+      particles: {
+        number: { value: 60, density: { enable: true, value_area: 900 } },
+        color: { value: particleColor },
+        shape: { type: 'circle' },
+        opacity: { value: 0.4, random: true, anim: { enable: true, speed: 0.5, opacity_min: 0.1, sync: false } },
+        size: { value: 3, random: true },
+        line_linked: { enable: true, distance: 130, color: particleLineColor, opacity: 0.3, width: 1 },
+        move: { enable: true, speed: 1.2, direction: 'none', random: true, straight: false, out_mode: 'out' }
+      },
+      interactivity: {
+        detect_on: 'canvas',
+        events: {
+          onhover: { enable: true, mode: 'grab' },
+          onclick: { enable: true, mode: 'push' },
+          resize: true
+        },
+        modes: {
+          grab: { distance: 140, line_linked: { opacity: 0.5 } },
+          push: { particles_nb: 3 }
+        }
+      },
+      retina_detect: true
+    });
+
     function updateTime() {
       const now = new Date();
       document.getElementById('time-display').textContent = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -194,14 +299,18 @@
       });
     }
 
-    // Appends your locally-tracked top tools to the static counts above -
-    // sidebar.js records a visit per tool page and exposes the tally via
+    // Renders your locally-tracked top tools as clickable pills - sidebar.js
+    // records a visit per tool page and exposes the tally via
     // mostUsedTools(); nothing to show yet on a first-ever visit, so this
-    // stays silent rather than printing an empty "Most used:" label.
+    // stays empty rather than showing an empty "Most used" row.
     const mostUsed = window.BackbrainTheme.mostUsedTools(3);
     if (mostUsed.length) {
-      document.getElementById('heroStats').textContent += ` · Most used: ${mostUsed.map(t => t.title).join(', ')}`;
+      document.getElementById('heroMostUsed').innerHTML = mostUsed.map(tool =>
+        `<a class="most-used-pill" href="${window.BackbrainTheme.resolveHref(tool.href)}"><i class="${tool.icon}"></i><span>${tool.title}</span></a>`
+      ).join('');
     }
+
+    document.getElementById('homeSearchBtn').addEventListener('click', () => window.BackbrainTheme.openSearch());
 
     function highlightCurrentPage() {
       const currentUrl = window.location.href;

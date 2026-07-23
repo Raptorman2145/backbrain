@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>What's Next?</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
 <style>
   html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
   body {
@@ -64,14 +66,9 @@
     align-items: center;
     gap: 6px;
     padding: 8px 14px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface-alt);
-    color: var(--text);
-    font-family: inherit;
     font-size: 13px;
     font-weight: 600;
-    cursor: pointer;
     white-space: nowrap;
   }
   .vote-btn:hover { border-color: var(--accent-bg); }
@@ -82,11 +79,7 @@
     flex: 1;
     padding: 10px 12px;
     font-size: 14px;
-    font-family: inherit;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface);
-    color: var(--text);
   }
   #addForm button {
     padding: 10px 16px;
@@ -112,7 +105,7 @@
   <ul id="optionList"></ul>
 
   <form id="addForm">
-    <input type="text" id="addInput" placeholder="Suggest something..." autocomplete="off" maxlength="140">
+    <input type="text" id="addInput" class="tool-input" placeholder="Suggest something..." autocomplete="off" maxlength="140">
     <button type="submit">Add</button>
   </form>
 
@@ -171,15 +164,19 @@
       localStorage.setItem(LOCAL_KEY, JSON.stringify(state));
     }
 
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
     function render(options) {
       const sorted = [...options].sort((a, b) => b.votes - a.votes);
       optionListEl.innerHTML = sorted.map(opt => {
         const voted = opt.voters.includes(session.myId);
         return `
           <li class="option-row">
-            <span class="option-label">${opt.label}</span>
+            <span class="option-label">${escapeHtml(opt.label)}</span>
             <span class="option-votes">${opt.votes} vote${opt.votes === 1 ? "" : "s"}</span>
-            <button type="button" class="vote-btn${voted ? " voted" : ""}" data-id="${opt.id}" data-voted="${voted}">
+            <button type="button" class="vote-btn tool-btn${voted ? " voted" : ""}" data-id="${opt.id}" data-voted="${voted}">
               <i class="fa-solid fa-arrow-up"></i> ${voted ? "Voted" : "Vote"}
             </button>
           </li>
@@ -205,7 +202,7 @@
       syncBadge.classList.remove("synced");
       syncBadgeText.textContent = reasonHtml ? "Firebase connected, but not authorized" : "Local only";
       syncNote.hidden = false;
-      syncNote.innerHTML = reasonHtml || `Results shown are just from this browser, not the whole group — nobody else sees your votes and you don't see theirs. To make this a real shared poll, set up Chat's Firebase connection first (Tools &rarr; Discord), then reload this page.`;
+      syncNote.innerHTML = reasonHtml || `Results shown are just from this browser, not the whole group — nobody else sees your votes and you don't see theirs. To make this a real shared poll, set up Chatroom's Firebase connection first, then reload this page.`;
       if (!reasonHtml) rulesBlock.style.display = "none";
       renderLocal();
     }

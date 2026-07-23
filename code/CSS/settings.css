@@ -172,6 +172,39 @@ p.sub { color: var(--text-muted); margin-top: 0; margin-bottom: 28px; }
 }
 .settings-toggle-row input { accent-color: var(--accent-bg); }
 
+.settings-select,
+.settings-block input[type="text"],
+.settings-block input[type="url"] {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+.settings-select { cursor: pointer; }
+.settings-select option { background: var(--bg); color: var(--text); }
+.settings-select:focus-visible,
+.settings-block input:focus-visible {
+  outline: none;
+  border-color: var(--accent-bg);
+  box-shadow: var(--focus-ring);
+}
+
+.panic-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.panic-controls label { font-size: 13px; color: var(--text-muted); }
+.panic-controls input[type="url"] { flex: 1; min-width: 200px; }
+/* Greyed out until the panic toggle is on - purely a visual/interaction hint;
+   the keydown handler in sidebar.js is what actually gates on the stored flag. */
+.panic-controls.disabled { opacity: 0.5; pointer-events: none; }
+
 .settings-keys {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

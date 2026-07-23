@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Settings</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="../code/CSS/shared.css">
@@ -31,8 +32,37 @@
   </div>
 
   <div class="settings-section">
+    <h2>Privacy &amp; Stealth</h2>
+    <p class="settings-note">Help this site blend in. Both settings are stored only in this browser and are off until you turn them on.</p>
+
+    <div class="settings-block">
+      <label class="settings-block-label" for="cloakPreset">Tab cloak — disguise the browser tab's title and icon</label>
+      <select id="cloakPreset" class="settings-select"></select>
+      <div class="theme-custom-row" id="cloakCustomRow" hidden>
+        <input type="text" id="cloakCustomTitle" placeholder="Custom tab title" maxlength="120">
+        <span>Shows this as the tab title; keeps the normal icon.</span>
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <label class="settings-toggle-row">
+        <input type="checkbox" id="panicEnabledChk">
+        Panic key — press one key to jump straight to another site
+      </label>
+      <p class="settings-note">Fires even while you're typing, so pick a key you won't hit by accident.</p>
+      <div class="panic-controls" id="panicControls">
+        <label for="panicKeySelect">Key</label>
+        <select id="panicKeySelect" class="settings-select"></select>
+        <label for="panicUrlInput">Go to</label>
+        <input type="url" id="panicUrlInput" placeholder="https://classroom.google.com">
+        <button type="button" id="panicTestBtn" class="settings-btn">Test</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
     <h2>Keyboard Shortcuts</h2>
-    <p class="settings-note">Also available anywhere on the site by pressing <kbd>?</kbd>.</p>
+    <p class="settings-note">This is the one place these are listed — there's no site-wide hotkey to pull them up elsewhere.</p>
     <div class="shortcuts-list" id="settingsShortcutsList"></div>
   </div>
 

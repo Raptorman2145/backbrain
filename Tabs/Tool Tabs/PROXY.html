@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Proxy</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
 <style>
   html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
   body {
@@ -80,12 +82,7 @@
   .toolbar button {
     padding: 8px 12px;
     font-size: 14px;
-    font-family: inherit;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
   }
   .toolbar button:disabled {
     opacity: 0.4;
@@ -101,11 +98,7 @@
     flex: 1;
     padding: 8px 12px;
     font-size: 14px;
-    font-family: inherit;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface);
-    color: var(--text);
   }
   #addressBar:focus {
     outline: none;
@@ -175,12 +168,7 @@
   #clearHistoryBtn {
     padding: 4px 10px;
     font-size: 12px;
-    font-family: inherit;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
   }
   #clearHistoryBtn:hover { color: var(--accent-bg); }
   .history-row {
@@ -262,19 +250,19 @@
 </head>
 <body>
   <div class="tab-strip" id="tabStrip">
-    <button id="newTabBtn" title="New tab">+</button>
+    <button id="newTabBtn" title="New tab" aria-label="New tab">+</button>
   </div>
 
   <div class="toolbar">
-    <button id="backBtn" title="Back" disabled><i class="fa-solid fa-arrow-left"></i></button>
-    <button id="forwardBtn" title="Forward" disabled><i class="fa-solid fa-arrow-right"></i></button>
-    <button id="reloadBtn" title="Reload"><i class="fa-solid fa-rotate-right"></i></button>
-    <button id="homeBtn" title="Home"><i class="fa-solid fa-house"></i></button>
-    <input type="text" id="addressBar" placeholder="Enter a URL or search term..." autocomplete="off">
+    <button id="backBtn" class="tool-btn" title="Back" aria-label="Back" disabled><i class="fa-solid fa-arrow-left"></i></button>
+    <button id="forwardBtn" class="tool-btn" title="Forward" aria-label="Forward" disabled><i class="fa-solid fa-arrow-right"></i></button>
+    <button id="reloadBtn" class="tool-btn" title="Reload" aria-label="Reload"><i class="fa-solid fa-rotate-right"></i></button>
+    <button id="homeBtn" class="tool-btn" title="Home" aria-label="Home"><i class="fa-solid fa-house"></i></button>
+    <input type="text" id="addressBar" class="tool-input" placeholder="Enter a URL or search term..." autocomplete="off">
     <button id="goBtn">Go</button>
-    <button id="bookmarkBtn" title="Bookmark this page"><i class="fa-solid fa-star"></i></button>
-    <button id="bookmarksToggle" title="Bookmarks"><i class="fa-solid fa-bars"></i></button>
-    <button id="historyToggle" title="History"><i class="fa-solid fa-clock-rotate-left"></i></button>
+    <button id="bookmarkBtn" class="tool-btn" title="Bookmark this page" aria-label="Bookmark this page"><i class="fa-solid fa-star"></i></button>
+    <button id="bookmarksToggle" class="tool-btn" title="Bookmarks" aria-label="Toggle bookmarks panel"><i class="fa-solid fa-bars"></i></button>
+    <button id="historyToggle" class="tool-btn" title="History" aria-label="Toggle history panel"><i class="fa-solid fa-clock-rotate-left"></i></button>
   </div>
 
   <div class="bookmarks-panel" id="bookmarksPanel" hidden>
@@ -284,7 +272,7 @@
   <div class="history-panel" id="historyPanel" hidden>
     <div class="history-header">
       <h3>History</h3>
-      <button id="clearHistoryBtn">Clear History</button>
+      <button id="clearHistoryBtn" class="tool-btn">Clear History</button>
     </div>
     <div id="historyList"></div>
   </div>
@@ -457,7 +445,7 @@
       tabs.forEach(tab => {
         const chip = document.createElement('div');
         chip.className = 'tab-chip' + (tab.id === activeTabId ? ' active' : '');
-        chip.innerHTML = `<span class="tab-label">${tab.title}</span><button class="tab-close" title="Close tab">&times;</button>`;
+        chip.innerHTML = `<span class="tab-label">${tab.title}</span><button class="tab-close" title="Close tab" aria-label="Close tab">&times;</button>`;
         chip.querySelector('.tab-label').addEventListener('click', () => activateTab(tab.id));
         chip.querySelector('.tab-close').addEventListener('click', e => { e.stopPropagation(); closeTab(tab.id); });
         tabStrip.insertBefore(chip, newTabBtn);
@@ -479,7 +467,7 @@
         ? list.map((b, i) => `
             <div class="bookmark-row">
               <span class="bookmark-label" data-index="${i}">${b.title}</span>
-              <button class="bookmark-delete" data-index="${i}" title="Delete">&times;</button>
+              <button class="bookmark-delete" data-index="${i}" title="Delete" aria-label="Delete bookmark">&times;</button>
             </div>
           `).join('')
         : '<p class="bookmark-empty">No bookmarks yet.</p>';
@@ -528,7 +516,7 @@
                 <div class="history-title">${h.title}</div>
                 <div class="history-meta">${new Date(h.visitedAt).toLocaleString()}</div>
               </div>
-              <button class="history-delete" data-index="${i}" title="Remove">&times;</button>
+              <button class="history-delete" data-index="${i}" title="Remove" aria-label="Remove from history">&times;</button>
             </div>
           `).join('')
         : '<p class="history-empty">No history yet.</p>';

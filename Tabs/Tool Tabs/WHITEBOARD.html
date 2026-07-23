@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Whiteboard</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
 <style>
   html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
   body {
@@ -39,13 +41,8 @@
   .board-bar button {
     padding: 7px 12px;
     font-size: 12px;
-    font-family: inherit;
     font-weight: 600;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface-alt);
-    color: var(--text);
-    cursor: pointer;
   }
   .board-bar button:hover { border-color: var(--accent-bg); }
 
@@ -64,11 +61,7 @@
     flex: 1;
     padding: 9px 12px;
     font-size: 13px;
-    font-family: inherit;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface-alt);
-    color: var(--text);
   }
   .landing button {
     padding: 9px 14px;
@@ -123,13 +116,8 @@
   .board-toolbar button {
     padding: 8px 14px;
     font-size: 13px;
-    font-family: inherit;
     font-weight: 600;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface-alt);
-    color: var(--text);
-    cursor: pointer;
   }
   .board-toolbar button:hover { border-color: var(--accent-bg); }
   .board-toolbar button.active { background: var(--accent-bg); color: var(--accent-text); border-color: var(--accent-bg); }
@@ -155,8 +143,8 @@
     <i class="fa-solid fa-tower-broadcast"></i>
     <span class="board-bar-name">Shared board — everyone with the link sees this live</span>
     <div class="board-bar-presence" id="presenceList"></div>
-    <button type="button" id="inviteBtn"><i class="fa-solid fa-link"></i> Copy Invite Link</button>
-    <button type="button" id="leaveBoardBtn">Leave</button>
+    <button type="button" id="inviteBtn" class="tool-btn"><i class="fa-solid fa-link"></i> Copy Invite Link</button>
+    <button type="button" id="leaveBoardBtn" class="tool-btn">Leave</button>
   </div>
 
   <div class="landing" id="landingScreen" hidden>
@@ -165,7 +153,7 @@
     <button type="button" id="createBoardBtn"><i class="fa-solid fa-tower-broadcast"></i> Start a Shared Board</button>
     <div class="landing-divider">— or —</div>
     <div class="landing-row">
-      <input type="text" id="joinBoardInput" placeholder="Paste an invite link or board code" autocomplete="off">
+      <input type="text" id="joinBoardInput" class="tool-input" placeholder="Paste an invite link or board code" autocomplete="off">
       <button type="button" id="joinBoardBtn">Join</button>
     </div>
     <button type="button" id="useLocalBtn">Just use it locally instead, no sharing</button>
@@ -173,13 +161,13 @@
 
   <div class="board-toolbar">
     <div class="tool-group">
-      <button type="button" id="penBtn" class="active" title="Pen"><i class="fa-solid fa-pen"></i></button>
-      <button type="button" id="eraserBtn" title="Eraser"><i class="fa-solid fa-eraser"></i></button>
+      <button type="button" id="penBtn" class="tool-btn active" title="Pen" aria-label="Pen"><i class="fa-solid fa-pen"></i></button>
+      <button type="button" id="eraserBtn" class="tool-btn" title="Eraser" aria-label="Eraser"><i class="fa-solid fa-eraser"></i></button>
     </div>
 
     <div class="tool-group swatch-row" id="swatchRow"></div>
     <div class="tool-group">
-      <input type="color" id="customColor" value="#e64848" title="Custom color">
+      <input type="color" id="customColor" value="#e64848" title="Custom color" aria-label="Custom color">
     </div>
 
     <div class="tool-group">
@@ -189,9 +177,9 @@
     </div>
 
     <div class="tool-group">
-      <button type="button" id="undoBtn" title="Undo"><i class="fa-solid fa-rotate-left"></i> Undo</button>
-      <button type="button" id="clearBtn" title="Clear everything">Clear</button>
-      <button type="button" id="saveBtn" title="Download as PNG"><i class="fa-solid fa-download"></i> Save PNG</button>
+      <button type="button" id="undoBtn" class="tool-btn" title="Undo"><i class="fa-solid fa-rotate-left"></i> Undo</button>
+      <button type="button" id="clearBtn" class="tool-btn" title="Clear everything">Clear</button>
+      <button type="button" id="saveBtn" class="tool-btn" title="Download as PNG"><i class="fa-solid fa-download"></i> Save PNG</button>
     </div>
   </div>
 
@@ -599,7 +587,7 @@
 
     if (!firebaseConfig) {
       localNote.hidden = false;
-      localNote.textContent = "Saved to this browser only, not shared. To draw together with others, set up Chat's Firebase connection first (Tools → Discord), then come back here.";
+      localNote.textContent = "Saved to this browser only, not shared. To draw together with others, set up Chatroom's Firebase connection first, then come back here.";
       loadLocalSaved();
     } else {
       const urlBoardId = new URL(location.href).searchParams.get(BOARD_PARAM);

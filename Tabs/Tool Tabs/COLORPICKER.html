@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Color Picker</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
 <style>
   html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
   body {
@@ -44,10 +46,7 @@
     padding: 10px 12px;
     font-size: 14px;
     font-family: 'Consolas', monospace;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-strong);
     background: var(--surface);
-    color: var(--text);
   }
   #hexInput:focus {
     outline: none;
@@ -121,7 +120,7 @@
 
   <div class="picker-row">
     <input type="color" id="colorPicker" value="#cc0000">
-    <input type="text" id="hexInput" value="#cc0000" autocomplete="off" spellcheck="false">
+    <input type="text" id="hexInput" class="tool-input" value="#cc0000" autocomplete="off" spellcheck="false">
   </div>
 
   <div class="value-grid" id="valueGrid"></div>

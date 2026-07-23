@@ -16,6 +16,25 @@ body {
 h1 { margin-bottom: 4px; }
 p.sub { color: var(--text-muted); margin: 0; }
 
+/* Shared base for Tool Tabs text inputs. Border/radius/color/font are
+   identical everywhere they're used; padding, font-size, and background
+   stay declared per-page since those intentionally vary by context. */
+.tool-input {
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+}
+
+/* Shared base for Tool Tabs secondary buttons — same rationale as .tool-input. */
+.tool-btn {
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  cursor: pointer;
+}
+
 .card-media.tool-icon {
   display: flex;
   align-items: center;

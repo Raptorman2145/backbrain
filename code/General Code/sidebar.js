@@ -8,6 +8,7 @@
   const THEME_BG_KEY = "site_theme_bg";
   const THEME_MODE_KEY = "site_theme_mode";
   const THEME_FONT_KEY = "site_theme_font";
+  const THEME_ZOOM_KEY = "site_theme_zoom";
   const THEME_BG_IMAGE_KEY = "site_theme_bg_image";
   const THEME_MOTION_KEY = "site_reduce_motion";
   const CURSOR_KEY = "site_cursor";
@@ -138,10 +139,14 @@
   }
 
   // --- Site-wide theme font ---
-  // None of these are the real licensed/extracted game fonts (Wii's font,
-  // Undertale's "Determination", Minecraft's "Mojangles", Discord's "gg
-  // sans" are all proprietary or fan-extracted, not freely redistributable)
-  // - these are close, properly open-licensed Google Fonts stand-ins.
+  // Most of these are close, properly open-licensed Google Fonts stand-ins
+  // rather than the real licensed/extracted game fonts (Discord's "gg
+  // sans" is proprietary, for instance, not freely redistributable). A few
+  // themes (Wii, Undertale, Hyrule Field, Minecraft) instead use free
+  // fan-made recreation fonts loaded locally via @font-face in shared.css -
+  // still not the actual proprietary game fonts, just closer in style: see
+  // the @font-face block in shared.css for those, and this table only for
+  // the ones actually fetched from Google.
   //
   // Only the ONE family the active theme actually needs gets requested, not
   // all of them - this used to load a single combined URL covering every
@@ -149,12 +154,11 @@
   // any) was active, which meant loading fonts for themes a visitor had
   // never even picked in Settings. Keyed by the bare family
   // name so it can be pulled out of the CSS-ready font stack strings stored
-  // per theme (e.g. "'Varela Round', sans-serif" -> "Varela Round").
+  // per theme (e.g. "'Cinzel', serif" -> "Cinzel"). Local @font-face fonts
+  // (e.g. "Minecraft") simply have no entry here, so this lookup is a no-op
+  // for them and the browser resolves them from shared.css instead.
   const FONT_GOOGLE_PARAMS = {
-    "Varela Round": "family=Varela+Round",
-    "Silkscreen": "family=Silkscreen:wght@400;700",
     "Cinzel": "family=Cinzel:wght@400;600;700",
-    "Press Start 2P": "family=Press+Start+2P",
     "VT323": "family=VT323",
     "Poppins": "family=Poppins:wght@400;600;700",
     "Rubik": "family=Rubik:wght@400;500;700",
@@ -194,6 +198,22 @@
     const font = localStorage.getItem(THEME_FONT_KEY);
     document.body.style.fontFamily = font || "";
     loadGoogleFontFor(font);
+  }
+
+  // A couple of fonts (Nintendo DS BIOS, Monster Friend) read noticeably
+  // smaller/larger than the site's usual text at the same declared size,
+  // purely because of how each typeface's own glyphs are drawn. Correcting
+  // for that with body's font-size alone barely shows up anywhere though -
+  // almost every visible label/button/input across the site sets its own
+  // explicit px font-size (see tools.css, settings.css, every Tool Tab's
+  // inline <style>), so body's font-size only cascades to the handful of
+  // genuinely unstyled elements (a page's subtitle paragraph, mainly).
+  // zoom scales the actual rendered pixels of everything on the page
+  // uniformly - explicit sizes included - the same way a browser's own
+  // Ctrl+/Ctrl- page zoom does, which is what "make this readable" actually
+  // needs here.
+  function applySiteZoom() {
+    document.body.style.zoom = localStorage.getItem(THEME_ZOOM_KEY) || "";
   }
 
   // --- Site-wide theme background scene ---
@@ -328,12 +348,14 @@
 
   applySiteTheme();
   applySiteFont();
+  applySiteZoom();
   applySiteBackground();
   applySiteCursor();
   window.BackbrainFirebase = { getConfig: getFirebaseConfig, loadSdk: loadFirebaseSdk, init: initFirebaseOnce };
   window.BackbrainTheme = {
     apply: applySiteTheme,
     applyFont: applySiteFont,
+    applyZoom: applySiteZoom,
     applyBackground: applySiteBackground,
     darkenHex, lightenHex, hexToRgba, getReadableText,
     // Resolves a site-root-relative path (e.g. "images/cursors/frost.svg")
@@ -346,14 +368,133 @@
   };
   window.BackbrainCursor = { apply: applySiteCursor };
 
+  // --- Tab cloak, favicon branding, and panic key ---
+  // All three live here (not in each page's <head>) for the same reason the
+  // sidebar itself does: this script is the one thing every page loads, and
+  // siteRoot already resolves assets from any folder depth. Cloak OFF is the
+  // normal state - it just applies the real favicon and appends the site name
+  // to the tab title. Cloak ON disguises both the title and favicon as another
+  // site (Google Docs, Classroom, ...) so the browser tab blends in; the panic
+  // key jumps straight to a school-safe URL. Both are opt-in via Settings.
+  const SITE_NAME = "Backbrain";
+  const CLOAK_KEY = "site_tab_cloak"; // JSON: { preset, title? }
+  const PANIC_ENABLED_KEY = "site_panic_enabled";
+  const PANIC_KEY_KEY = "site_panic_key";
+  const PANIC_URL_KEY = "site_panic_url";
+  const DEFAULT_PANIC_KEY = "`";
+  const DEFAULT_PANIC_URL = "https://classroom.google.com";
+  const DEFAULT_FAVICON = new URL("images/logo.png", siteRoot).href;
+  // Captured once, before anything below touches document.title, so toggling
+  // cloak back off can always restore the page's real title even after a
+  // cloak overwrote it.
+  const ORIGINAL_TITLE = document.title;
+
+  // Each disguise is {label, title, icon}: label names it in Settings,
+  // title/icon are what the tab actually shows. The favicons are the real
+  // remote ones - this site already loads Font Awesome, Google Fonts, and the
+  // Firebase SDK from CDNs, so one more tiny cross-origin icon is consistent,
+  // and if any ever 404s the tab just keeps its previous icon (harmless).
+  const CLOAK_PRESETS = {
+    google:    { label: "Google",          title: "Google",                                icon: "https://www.google.com/favicon.ico" },
+    gdocs:     { label: "Google Docs",      title: "Untitled document - Google Docs",       icon: "https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico" },
+    gslides:   { label: "Google Slides",    title: "Untitled presentation - Google Slides", icon: "https://ssl.gstatic.com/docs/presentations/images/favicon5.ico" },
+    gsheets:   { label: "Google Sheets",    title: "Untitled spreadsheet - Google Sheets",  icon: "https://ssl.gstatic.com/docs/spreadsheets/favicon3.ico" },
+    gdrive:    { label: "Google Drive",     title: "My Drive - Google Drive",               icon: "https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png" },
+    gmail:     { label: "Gmail",            title: "Inbox - Gmail",                         icon: "https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico" },
+    classroom: { label: "Google Classroom", title: "Classes",                              icon: "https://ssl.gstatic.com/classroom/favicon.png" },
+    canvas:    { label: "Canvas",           title: "Dashboard",                             icon: "https://canvas.instructure.com/favicon.ico" },
+    clever:    { label: "Clever",           title: "Clever | Portal",                       icon: "https://clever.com/favicon.ico" },
+    wikipedia: { label: "Wikipedia",        title: "Wikipedia, the free encyclopedia",      icon: "https://en.wikipedia.org/static/favicon/wikipedia.ico" },
+  };
+
+  function setFavicon(href) {
+    let link = document.getElementById("backbrain-favicon");
+    if (!link) {
+      link = document.createElement("link");
+      link.id = "backbrain-favicon";
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = href;
+  }
+
+  function getCloak() {
+    try { return JSON.parse(localStorage.getItem(CLOAK_KEY)); } catch { return null; }
+  }
+
+  // Idempotent - Settings calls this live on every change. "custom" keeps the
+  // real favicon but shows a user-typed title; a named preset swaps both.
+  function applyCloak() {
+    const cfg = getCloak();
+    const preset = cfg && cfg.preset;
+    if (preset === "custom") {
+      document.title = cfg.title || "New Tab";
+      setFavicon(DEFAULT_FAVICON);
+      return;
+    }
+    if (preset && CLOAK_PRESETS[preset]) {
+      document.title = CLOAK_PRESETS[preset].title;
+      setFavicon(CLOAK_PRESETS[preset].icon);
+      return;
+    }
+    // Off (default): real favicon + branded title, without double-appending
+    // the site name if the page's own title already mentions it.
+    setFavicon(DEFAULT_FAVICON);
+    document.title = /backbrain/i.test(ORIGINAL_TITLE) ? ORIGINAL_TITLE : `${ORIGINAL_TITLE} · ${SITE_NAME}`;
+  }
+
+  applyCloak();
+
+  // Panic key ("boss key"): reads its config live on each keypress (cheap)
+  // so Settings changes take effect with no re-binding. OFF by default - a
+  // surprise redirect on a random keystroke would be awful for anyone who
+  // never asked for it. Deliberately fires even while typing (that's the whole
+  // point of an instant escape), so Settings warns to pick a key you won't hit
+  // by accident. location.replace, not assign, so the site doesn't linger in
+  // history for the Back button to reveal.
+  document.addEventListener("keydown", e => {
+    if (localStorage.getItem(PANIC_ENABLED_KEY) !== "true") return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key !== (localStorage.getItem(PANIC_KEY_KEY) || DEFAULT_PANIC_KEY)) return;
+    e.preventDefault();
+    window.location.replace(localStorage.getItem(PANIC_URL_KEY) || DEFAULT_PANIC_URL);
+  });
+
+  window.BackbrainStealth = { CLOAK_PRESETS, applyCloak, DEFAULT_PANIC_KEY, DEFAULT_PANIC_URL };
+
+  // --- PWA: manifest + service worker ---
+  // Injected here rather than into 30 separate <head>s. The manifest +
+  // theme-color make the site installable; sw.js (at the site root, so its
+  // scope covers the whole site) caches same-origin assets for offline use.
+  // Service workers need a secure context, so register() is a silent no-op on
+  // file:// - opening the files directly still works, just without offline
+  // caching. serve.ps1 (localhost) and any https host both qualify.
+  (function setupPwa() {
+    if (!document.querySelector('link[rel="manifest"]')) {
+      const manifestLink = document.createElement("link");
+      manifestLink.rel = "manifest";
+      manifestLink.href = new URL("manifest.webmanifest", siteRoot).href;
+      document.head.appendChild(manifestLink);
+    }
+    if (!document.querySelector('meta[name="theme-color"]')) {
+      const themeColor = document.createElement("meta");
+      themeColor.name = "theme-color";
+      themeColor.content = "#200a0a";
+      document.head.appendChild(themeColor);
+    }
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register(new URL("sw.js", siteRoot).href).catch(() => {});
+      });
+    }
+  })();
+
   // Hrefs below are paths relative to the site root.
-  // Games.html is deliberately unlinked from every nav surface here (main
-  // sidebar, search index, deep-links) - it's unused for now, per request.
-  // The page and its code are untouched, just not reachable through normal
-  // site navigation; re-add a Games entry here to bring it back.
   const linksBeforeAccordion = [
+    { href: "Games.html", icon: "fa-solid fa-gamepad", label: "Games" },
     { href: "Tabs/Tool%20Tabs/MOVIES.html", icon: "fa-solid fa-clapperboard", label: "Movies" },
     { href: "Tabs/Tool%20Tabs/PROXY.html", icon: "fa-solid fa-magnifying-glass", label: "Proxy" },
+    { href: "Tabs/Tool%20Tabs/CHAT.html", icon: "fa-solid fa-comments", label: "Chatroom" },
   ];
   // Music and Fern are still real placeholder tabs (blank iframe until a
   // real site gets embedded); Site 4 and Site 5 were the same pattern with
@@ -373,7 +514,6 @@
     { href: "Tabs/team.html", icon: "fa-solid fa-people-group", label: "Team" },
     { href: "Tabs/credits.html", icon: "fa-solid fa-scroll", label: "Credits" },
     { href: "Tabs/changelog.html", icon: "fa-solid fa-clock-rotate-left", label: "Changelog" },
-    { href: "Tabs/Tool%20Tabs/CHAT.html", icon: "fa-brands fa-discord", label: "Discord" },
     { href: "Tabs/settings.html", icon: "fa-solid fa-gear", label: "Settings" },
   ];
 
@@ -385,8 +525,9 @@
   // back rather than stripping every entry for a field that costs nothing.
   const SEARCH_INDEX = [
     { title: "Home", href: "index.html", icon: "fa-solid fa-house", category: null },
+    { title: "Games", href: "Games.html", icon: "fa-solid fa-gamepad", category: "Fun & Games" },
     { title: "Movies", href: "Tabs/Tool%20Tabs/MOVIES.html", icon: "fa-solid fa-clapperboard", category: "Entertainment" },
-    { title: "Discord", href: "Tabs/Tool%20Tabs/CHAT.html", icon: "fa-brands fa-discord", category: "Entertainment" },
+    { title: "Chatroom", href: "Tabs/Tool%20Tabs/CHAT.html", icon: "fa-solid fa-comments", category: "Entertainment" },
     { title: "Proxy", href: "Tabs/Tool%20Tabs/PROXY.html", icon: "fa-solid fa-magnifying-glass", category: "Entertainment" },
     { title: "Music", href: "Tabs/Tool%20Tabs/Music.html", icon: "fa-solid fa-music", category: "Entertainment" },
     { title: "Fern", href: "Tabs/Tool%20Tabs/Fern.html", icon: "fa-solid fa-globe", category: "Entertainment" },
@@ -398,6 +539,16 @@
     { title: "Color Picker", href: "Tabs/Tool%20Tabs/COLORPICKER.html", icon: "fa-solid fa-palette", category: "Tools" },
     { title: "QR Code Generator", href: "Tabs/Tool%20Tabs/QRCODE.html", icon: "fa-solid fa-qrcode", category: "Tools" },
     { title: "Cipher Decoder", href: "Tabs/Tool%20Tabs/CIPHERDECODER.html", icon: "fa-solid fa-key", category: "Tools" },
+    { title: "Calculator", href: "Tabs/Tool%20Tabs/CALCULATOR.html", icon: "fa-solid fa-calculator", category: "Tools" },
+    { title: "Password Generator", href: "Tabs/Tool%20Tabs/PASSWORDGENERATOR.html", icon: "fa-solid fa-shield-halved", category: "Tools" },
+    { title: "Word Counter", href: "Tabs/Tool%20Tabs/WORDCOUNTER.html", icon: "fa-solid fa-align-left", category: "Tools" },
+    { title: "Markdown Previewer", href: "Tabs/Tool%20Tabs/MARKDOWNPREVIEWER.html", icon: "fa-brands fa-markdown", category: "Tools" },
+    { title: "Encoding Toolkit", href: "Tabs/Tool%20Tabs/ENCODINGTOOLKIT.html", icon: "fa-solid fa-arrow-right-arrow-left", category: "Tools" },
+    { title: "BMI Calculator", href: "Tabs/Tool%20Tabs/BMICALCULATOR.html", icon: "fa-solid fa-weight-scale", category: "Tools" },
+    { title: "Age Calculator", href: "Tabs/Tool%20Tabs/AGECALCULATOR.html", icon: "fa-solid fa-cake-candles", category: "Tools" },
+    { title: "Habit Tracker", href: "Tabs/Tool%20Tabs/HABITTRACKER.html", icon: "fa-solid fa-list-check", category: "Tools" },
+    { title: "Emoji Picker", href: "Tabs/Tool%20Tabs/EMOJIPICKER.html", icon: "fa-solid fa-face-smile", category: "Tools" },
+    { title: "Team Generator", href: "Tabs/Tool%20Tabs/TEAMGENERATOR.html", icon: "fa-solid fa-users", category: "Tools" },
     { title: "gn-math", href: "Tabs/Tool%20Tabs/GNMATH.html", icon: "fa-solid fa-square-root-variable", category: "Tools" },
     { title: "UGS", href: "Tabs/Tool%20Tabs/UGS.html", icon: "fa-solid fa-box-archive", category: "Tools" },
     { title: "Dice Roller", href: "Tabs/Tool%20Tabs/DICEROLLER.html", icon: "fa-solid fa-dice", category: "Fun & Games" },
@@ -438,9 +589,10 @@
   // Sub-page content — kept in sync by hand with General Code/team.js since
   // there's no shared data source between them. Each jumps straight to that
   // member via the hash deep-link team.html already supports (opens their
-  // profile popup). The equivalent per-game entries (Game Code/games.js)
-  // are intentionally left out while Games.html is unlinked - see the note
-  // by linksBeforeAccordion above.
+  // profile popup). Per-game entries (Game Code/games.js) are deliberately
+  // left out to avoid hand-duplicating that whole catalog here - the Games
+  // page itself is in SEARCH_INDEX above, and each game is still reachable by
+  // its in-page #game-<id> hash.
   const CONTENT_INDEX = [
     { title: "Raptor", context: "Team", href: "Tabs/team.html#member-Raptor", icon: "fa-solid fa-people-group" },
     { title: "Karl", context: "Team", href: "Tabs/team.html#member-Karl", icon: "fa-solid fa-people-group" },
@@ -517,6 +669,24 @@
 
   document.body.prepend(zone);
 
+  // The sidebar only opens via CSS :hover, which has no reliable equivalent
+  // on touch devices - there's no persistent pointer to hover with. Most
+  // pages here (every Tool Tab, Settings, Team, Credits, Changelog) have no
+  // navigation of their own at all, so a touch-only visitor landing on one
+  // could otherwise have no way to reach anywhere else on the site. This
+  // adds a plain tap-to-toggle fallback alongside hover - tapping the zone
+  // opens it, tapping anywhere outside it while open closes it - without
+  // changing hover's behavior for mouse users at all.
+  zone.addEventListener("click", e => {
+    if (e.target.closest("a, button")) return; // let real sidebar links/buttons act normally
+    zone.classList.toggle("sidebar-open");
+  });
+  document.addEventListener("click", e => {
+    if (zone.classList.contains("sidebar-open") && !zone.contains(e.target)) {
+      zone.classList.remove("sidebar-open");
+    }
+  });
+
   const accordionToggle = zone.querySelector("#sidebarAccordionToggle");
   const accordionContent = zone.querySelector("#sidebarAccordionContent");
   accordionToggle.addEventListener("click", () => {
@@ -550,6 +720,60 @@
       else badge.hidden = !(latest > seen);
     };
     document.head.appendChild(script);
+  }
+
+  // --- Unread chat badge ---
+  // Only fires if a "Main" account is saved (chat_saved_accounts, set by
+  // CHAT.html's own quick-login "pin" flow) - a visitor who's never used
+  // Chatroom shouldn't pay for a ~100KB Firebase SDK download on every page.
+  // One-shot read on load, not a live listener - holding a realtime socket
+  // open sitewide just for a badge isn't worth it; a stray unread DM lighting
+  // up a moment late (next page load) is an acceptable tradeoff. Skipped
+  // entirely on CHAT.html itself, where the page's own session already knows
+  // the real-time answer and an "unread" badge on its own nav link is moot.
+  if (!/CHAT\.html$/i.test(location.pathname)) {
+    const chatLink = zone.querySelector('a[href$="CHAT.html"]');
+    if (chatLink) {
+      let mainAccountKey = null;
+      try {
+        const accounts = JSON.parse(localStorage.getItem("chat_saved_accounts")) || [];
+        const main = accounts.find((a) => a.pin === "main");
+        if (main) mainAccountKey = main.key;
+      } catch {}
+      if (mainAccountKey) {
+        const badge = document.createElement("span");
+        badge.className = "sidebar-link-badge";
+        badge.hidden = true;
+        chatLink.appendChild(badge);
+
+        // Same project as CHAT.html's own FIREBASE_CONFIG - duplicated here
+        // rather than shared, since chat_firebase_config isn't actually
+        // written by CHAT.html (that convention never got wired up there),
+        // and this static config isn't sensitive on its own (Realtime
+        // Database Security Rules are the actual boundary, not this key).
+        const CHAT_FIREBASE_CONFIG = {
+          apiKey: "AIzaSyD8kpsUDGBosJHrV-8-WBrWqlzX5kD_aow",
+          authDomain: "backbrain-chat.firebaseapp.com",
+          databaseURL: "https://backbrain-chat-default-rtdb.firebaseio.com",
+          projectId: "backbrain-chat",
+          storageBucket: "backbrain-chat.firebasestorage.app",
+          messagingSenderId: "3599621998",
+          appId: "1:3599621998:web:22094646a375343c62ab7f",
+          measurementId: "G-2CEWGBFX6T",
+        };
+        loadFirebaseSdk()
+          .then(() => initFirebaseOnce(CHAT_FIREBASE_CONFIG).ref("profiles/" + mainAccountKey + "/dmThreads").once("value"))
+          .then((snap) => {
+            const threads = snap.val() || {};
+            const anyUnread = Object.entries(threads).some(([otherKey, meta]) => {
+              const seen = Number(localStorage.getItem("chat_dm_seen_" + otherKey) || 0);
+              return (meta.lastMessageAt || 0) > seen;
+            });
+            badge.hidden = !anyUnread;
+          })
+          .catch(() => {}); // best-effort - a failed check just leaves the badge hidden
+      }
+    }
   }
 
   // Random Page button removed for now - was here, picking from
@@ -635,6 +859,10 @@
   function closeSearch() {
     searchOverlay.hidden = true;
   }
+
+  // Exposed so pages can put their own search trigger outside the sidebar
+  // zone (e.g. index.html's HUD icon row) without duplicating the overlay.
+  window.BackbrainTheme.openSearch = openSearch;
 
   zone.querySelector("#sidebarSearchBtn").addEventListener("click", openSearch);
   searchInput.addEventListener("input", () => renderSearchResults(filterIndex(searchInput.value)));

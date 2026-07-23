@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typing Test</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(16px, 4vw, 36px);
+    margin-bottom: 20px;
+  }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .stat-value { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+  .passage-display {
+    max-width: 700px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-family: 'Consolas', monospace;
+    font-size: clamp(15px, 2.6vw, 19px);
+    line-height: 1.8;
+  }
+  .pchar { color: var(--text-muted); }
+  .pchar.correct { color: #22c55e; }
+  .pchar.incorrect { color: #ef4444; background: rgba(239, 68, 68, 0.16); border-radius: 2px; }
+  .pchar.current { border-bottom: 2px solid var(--accent-bg); }
+
+  #typingInput {
+    display: block;
+    width: 100%;
+    max-width: 700px;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    font-size: 16px;
+    font-family: 'Consolas', monospace;
+    background: var(--surface-alt);
+    margin-bottom: 8px;
+  }
+  #typingInput:focus-visible {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+  #typingInput:disabled { opacity: 0.6; }
+
+  .input-hint { font-size: 12px; color: var(--text-muted); margin: 0 0 20px; }
+
+  .result-banner {
+    max-width: 700px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--accent-bg);
+    color: var(--accent-bg);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .result-banner[hidden] { display: none; }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn-row .tool-btn {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .btn-row .tool-btn:hover { border-color: var(--accent-bg); }
+  .btn-row .tool-btn:focus-visible {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+</style>
+</head>
+<body>
+  <h1>Typing Test</h1>
+  <p class="sub">Measure your typing speed and accuracy.</p>
+
+  <div class="stats-row">
+    <div class="stat"><span class="stat-label">Time</span><span class="stat-value" id="timeStat">0.0s</span></div>
+    <div class="stat"><span class="stat-label">WPM</span><span class="stat-value" id="wpmStat">0</span></div>
+    <div class="stat"><span class="stat-label">Accuracy</span><span class="stat-value" id="accStat">100%</span></div>
+    <div class="stat"><span class="stat-label">Best WPM</span><span class="stat-value" id="bestStat">—</span></div>
+  </div>
+
+  <div class="passage-display" id="passageDisplay"></div>
+
+  <input type="text" id="typingInput" class="tool-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Type the passage shown above" placeholder="Click here and start typing...">
+  <p class="input-hint">The timer starts on your first keystroke. Pasting is disabled.</p>
+
+  <div class="result-banner" id="resultBanner" role="status" hidden></div>
+
+  <div class="btn-row">
+    <button type="button" id="restartBtn" class="tool-btn">Restart</button>
+    <button type="button" id="newPassageBtn" class="tool-btn">New Passage</button>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const PASSAGES = [
+      "The morning market was busy with vendors selling fresh bread and ripe fruit. A light breeze carried the scent of cinnamon down the cobblestone street. Shoppers moved slowly, in no particular hurry to leave.",
+      "Rain tapped gently against the window while the kettle began to whistle. She wrapped her hands around a warm mug and watched the garden turn gray. It felt like the perfect afternoon to read an old paperback.",
+      "The old library smelled of dust and quiet paper. Sunlight fell in long stripes across the wooden floor. Somewhere upstairs, a chair creaked as someone turned a page.",
+      "A curious fox trotted along the edge of the frozen pond, leaving small prints in the snow. Nearby, six sparrows argued loudly over a dropped crust of bread. Winter had a strange way of making everything feel quieter.",
+      "The train pulled out of the station just as the sun dipped behind the hills. Passengers settled into their seats, unpacking sandwiches and folding newspapers. Outside, fields of gold stretched toward the horizon.",
+      "He planted rows of carrots, peppers, and zucchini before the summer heat arrived. Every evening he watered the soil and pulled a few stubborn weeds. By August, the garden had become his favorite place to think.",
+      "The coffee shop on the corner opened early, filling the block with the smell of roasted beans. Regulars lined up quietly, most already knowing their order by heart. A jazz record played softly from an old speaker behind the counter.",
+      "Waves rolled steadily onto the shore as gulls circled overhead, hoping for scraps. Children built lopsided sandcastles near the tide line, laughing when the water knocked them down. The lighthouse blinked patiently in the distance.",
+      "The mechanic wiped grease from his hands and examined the engine one more time. Every bolt had to be checked twice before the car could leave the garage. It was slow work, but he took pride in doing it properly.",
+      "A gentle fog rolled over the hills just before sunrise, hiding the valley below. Farmers moved through their fields by memory more than sight. By mid morning, the mist had burned away completely.",
+      "The bakery down the street sold warm rolls every single morning without fail. Customers often joked that the smell alone was enough to wake the whole neighborhood. Few could resist buying just one more pastry before leaving.",
+      "Snow fell quietly over the small mountain town, covering rooftops and empty benches. A lone dog wandered past the shuttered shops, sniffing at the cold air. Somewhere, a fireplace crackled behind a fogged up window.",
+    ];
+
+    const passageDisplay = document.getElementById("passageDisplay");
+    const typingInput = document.getElementById("typingInput");
+    const timeStat = document.getElementById("timeStat");
+    const wpmStat = document.getElementById("wpmStat");
+    const accStat = document.getElementById("accStat");
+    const bestStat = document.getElementById("bestStat");
+    const resultBanner = document.getElementById("resultBanner");
+    const restartBtn = document.getElementById("restartBtn");
+    const newPassageBtn = document.getElementById("newPassageBtn");
+
+    const BEST_KEY = "typingtest_best";
+
+    let currentIndex = -1;
+    let currentPassage = "";
+    let startTime = null;
+    let tickTimer = null;
+    let finished = false;
+
+    // Same rejection-sampled CSPRNG approach used elsewhere on the site
+    // (Dice Roller, Wheel Spinner), so passage selection is uniformly
+    // random instead of biased by Math.random()'s float-to-int rounding.
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function bestWpm() {
+      const raw = localStorage.getItem(BEST_KEY);
+      const v = Number(raw);
+      return raw !== null && Number.isFinite(v) && v > 0 ? v : null;
+    }
+
+    function renderBest() {
+      const best = bestWpm();
+      bestStat.textContent = best !== null ? String(best) : "—";
+    }
+
+    function pickPassage() {
+      if (PASSAGES.length === 1) return 0;
+      let idx;
+      do { idx = secureRandomInt(PASSAGES.length); } while (idx === currentIndex);
+      return idx;
+    }
+
+    function renderPassage() {
+      passageDisplay.textContent = "";
+      const frag = document.createDocumentFragment();
+      for (const ch of currentPassage) {
+        const span = document.createElement("span");
+        span.className = "pchar pending";
+        span.textContent = ch;
+        frag.appendChild(span);
+      }
+      passageDisplay.appendChild(frag);
+    }
+
+    function updateHighlight() {
+      const typed = typingInput.value;
+      const spans = passageDisplay.children;
+      for (let i = 0; i < spans.length; i++) {
+        const span = spans[i];
+        span.classList.remove("pending", "correct", "incorrect", "current");
+        if (i < typed.length) {
+          span.classList.add(typed[i] === currentPassage[i] ? "correct" : "incorrect");
+        } else if (i === typed.length) {
+          span.classList.add("current");
+        } else {
+          span.classList.add("pending");
+        }
+      }
+    }
+
+    function countCorrect(typed) {
+      let n = 0;
+      for (let i = 0; i < typed.length; i++) {
+        if (typed[i] === currentPassage[i]) n++;
+      }
+      return n;
+    }
+
+    function refreshStats() {
+      const typed = typingInput.value;
+      const correct = countCorrect(typed);
+      const elapsedMs = startTime ? performance.now() - startTime : 0;
+      // Floors elapsed time at one second so a freak instantaneous finish
+      // can't divide by ~0 and print an absurd (or Infinity) WPM.
+      const elapsedMin = Math.max(elapsedMs / 60000, 1 / 60);
+      const wpm = startTime ? Math.round((correct / 5) / elapsedMin) : 0;
+      const accuracy = typed.length ? Math.round((correct / typed.length) * 100) : 100;
+
+      timeStat.textContent = `${(elapsedMs / 1000).toFixed(1)}s`;
+      wpmStat.textContent = String(wpm);
+      accStat.textContent = `${accuracy}%`;
+
+      return { wpm, accuracy };
+    }
+
+    function finish() {
+      finished = true;
+      clearInterval(tickTimer);
+      tickTimer = null;
+      const { wpm, accuracy } = refreshStats();
+      typingInput.disabled = true;
+
+      const prevBest = bestWpm();
+      const isNewBest = wpm > 0 && (!prevBest || wpm > prevBest);
+      if (isNewBest) localStorage.setItem(BEST_KEY, String(wpm));
+      renderBest();
+
+      resultBanner.hidden = false;
+      resultBanner.textContent = isNewBest
+        ? `${wpm} WPM at ${accuracy}% accuracy — new personal best!`
+        : `${wpm} WPM at ${accuracy}% accuracy.`;
+    }
+
+    function resetTest(newIndex) {
+      clearInterval(tickTimer);
+      tickTimer = null;
+      startTime = null;
+      finished = false;
+      currentIndex = newIndex;
+      currentPassage = PASSAGES[currentIndex];
+
+      renderPassage();
+      updateHighlight();
+
+      typingInput.disabled = false;
+      typingInput.value = "";
+      timeStat.textContent = "0.0s";
+      wpmStat.textContent = "0";
+      accStat.textContent = "100%";
+      resultBanner.hidden = true;
+      resultBanner.textContent = "";
+      typingInput.focus();
+    }
+
+    typingInput.addEventListener("input", () => {
+      if (finished) return;
+
+      if (typingInput.value.length > currentPassage.length) {
+        typingInput.value = typingInput.value.slice(0, currentPassage.length);
+      }
+
+      if (startTime === null && typingInput.value.length > 0) {
+        startTime = performance.now();
+        tickTimer = setInterval(refreshStats, 100);
+      }
+
+      updateHighlight();
+      refreshStats();
+
+      if (typingInput.value.length >= currentPassage.length) {
+        finish();
+      }
+    });
+
+    // Blocked so WPM/accuracy actually reflect typing rather than a paste.
+    typingInput.addEventListener("paste", e => e.preventDefault());
+
+    document.addEventListener("keydown", e => {
+      if (finished && e.key === "Enter") {
+        e.preventDefault();
+        resetTest(pickPassage());
+      }
+    });
+
+    restartBtn.addEventListener("click", () => resetTest(currentIndex));
+    newPassageBtn.addEventListener("click", () => resetTest(pickPassage()));
+
+    renderBest();
+    resetTest(secureRandomInt(PASSAGES.length));
+  </script>
+</body>
+</html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown Previewer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 20px; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .toolbar button {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--surface);
+  }
+  .toolbar button:hover { border-color: var(--accent-bg); color: var(--accent-bg); }
+
+  .panes {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .pane {
+    flex: 1 1 360px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .pane-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  #editor {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 60vh;
+    resize: vertical;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-family: 'Consolas', monospace;
+    line-height: 1.5;
+    background: var(--surface);
+  }
+  #editor:focus-visible {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  #preview {
+    flex: 1;
+    min-height: 60vh;
+    box-sizing: border-box;
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+  #preview:empty::before { content: "Nothing to preview yet."; color: var(--text-muted); }
+
+  #preview h1, #preview h2, #preview h3, #preview h4, #preview h5, #preview h6 {
+    margin: 0.8em 0 0.4em;
+    line-height: 1.3;
+  }
+  #preview h1:first-child, #preview h2:first-child, #preview h3:first-child { margin-top: 0; }
+  #preview h1 { font-size: 1.8em; }
+  #preview h2 { font-size: 1.5em; }
+  #preview h3 { font-size: 1.25em; }
+  #preview h4 { font-size: 1.1em; }
+  #preview h5 { font-size: 1em; }
+  #preview h6 { font-size: 0.9em; color: var(--text-muted); }
+  #preview p { margin: 0 0 0.8em; }
+  #preview a { color: var(--accent-bg); }
+  #preview code {
+    font-family: 'Consolas', monospace;
+    font-size: 0.9em;
+    background: var(--surface);
+    padding: 2px 5px;
+    border-radius: 4px;
+  }
+  #preview pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 0 0 0.8em;
+  }
+  #preview pre code { background: none; padding: 0; }
+  #preview blockquote {
+    margin: 0 0 0.8em;
+    padding: 4px 14px;
+    border-left: 3px solid var(--accent-bg);
+    color: var(--text-muted);
+  }
+  #preview ul, #preview ol { margin: 0 0 0.8em; padding-left: 1.6em; }
+  #preview li { margin-bottom: 0.2em; }
+  #preview hr { border: none; border-top: 1px solid var(--border-strong); margin: 1.2em 0; }
+
+  @media (max-width: 720px) {
+    .panes { flex-direction: column; }
+    #editor, #preview { min-height: 40vh; }
+  }
+</style>
+</head>
+<body>
+  <h1>Markdown Previewer</h1>
+  <p class="sub">Write Markdown, see it rendered live.</p>
+
+  <div class="toolbar">
+    <button type="button" class="tool-btn" data-insert="bold" title="Bold"><i class="fa-solid fa-bold"></i> Bold</button>
+    <button type="button" class="tool-btn" data-insert="italic" title="Italic"><i class="fa-solid fa-italic"></i> Italic</button>
+    <button type="button" class="tool-btn" data-insert="link" title="Link"><i class="fa-solid fa-link"></i> Link</button>
+    <button type="button" class="tool-btn" data-insert="code" title="Inline code"><i class="fa-solid fa-code"></i> Code</button>
+    <button type="button" class="tool-btn" data-insert="list" title="Bulleted list"><i class="fa-solid fa-list"></i> List</button>
+  </div>
+
+  <div class="panes">
+    <div class="pane">
+      <div class="pane-label">Markdown</div>
+      <textarea id="editor" class="tool-input" placeholder="# Start typing..." spellcheck="false"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-label">Preview</div>
+      <div id="preview"></div>
+    </div>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const DRAFT_KEY = "markdown_draft";
+    const editor = document.getElementById("editor");
+    const preview = document.getElementById("preview");
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function escapeAttr(str) {
+      return str.replace(/"/g, "&quot;");
+    }
+
+    // Blocks javascript:/data:/vbscript: etc in [text](url) links - the one
+    // way this renderer could turn user text into a clickable script vector
+    // even with raw HTML already escaped. Relative URLs (no scheme) and the
+    // handful of inert schemes are allowed through; anything else is
+    // rendered as plain text instead of a live link.
+    function isSafeUrl(url) {
+      const trimmed = url.trim();
+      if (trimmed === "") return false;
+      if (/^[/?#.]/.test(trimmed)) return true;
+      const schemeMatch = trimmed.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+      if (!schemeMatch) return true;
+      return /^(https?|mailto|tel)$/i.test(schemeMatch[1]);
+    }
+
+    // Fenced code blocks are pulled out before any other rule runs (and
+    // restored at the very end) so nothing inside them — asterisks,
+    // brackets, underscores — gets mangled by the inline rules meant for
+    // prose. Placeholders use a marker unlikely to occur in normal text
+    // and are restored via function replacer (not string), since a code
+    // block's own contents could otherwise be misread as $-substitution
+    // patterns by String.replace.
+    function renderMarkdown(raw) {
+      const escaped = escapeHtml(raw);
+      const blocks = [];
+      let working = escaped.replace(/```([\s\S]*?)```/g, (match, code) => {
+        const trimmed = code.replace(/^\n/, "").replace(/\n$/, "");
+        blocks.push(`<pre><code>${trimmed}</code></pre>`);
+        return ` BLOCK${blocks.length - 1} `;
+      });
+
+      const lines = working.split("\n");
+      const htmlLines = [];
+      let list = null;
+      let paragraph = [];
+
+      function flushParagraph() {
+        if (paragraph.length) {
+          htmlLines.push(`<p>${paragraph.join("<br>")}</p>`);
+          paragraph = [];
+        }
+      }
+      function flushList() {
+        if (list) {
+          htmlLines.push(`<${list.tag}>${list.items.join("")}</${list.tag}>`);
+          list = null;
+        }
+      }
+      function inline(text) {
+        return text
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\[([^\]]*)\]\(([^)\s]+)\)/g, (m, text2, url) =>
+            isSafeUrl(url) ? `<a href="${escapeAttr(url)}" target="_blank" rel="noopener noreferrer">${text2}</a>` : text2);
+      }
+
+      for (const line of lines) {
+        const heading = line.match(/^(#{1,6})\s+(.*)$/);
+        // The global escape pass upstream already turned a literal ">" into
+        // "&gt;" before this line is ever inspected, so the marker has to be
+        // matched in its escaped form here.
+        const quote = line.match(/^&gt;\s?(.*)$/);
+        const ordered = line.match(/^\s*\d+\.\s+(.*)$/);
+        const unordered = line.match(/^\s*[-*]\s+(.*)$/);
+        const isHr = /^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line);
+        const isBlockPlaceholder = /^ BLOCK\d+ $/.test(line);
+
+        if (isBlockPlaceholder) {
+          flushParagraph(); flushList();
+          htmlLines.push(line);
+        } else if (isHr) {
+          flushParagraph(); flushList();
+          htmlLines.push("<hr>");
+        } else if (heading) {
+          flushParagraph(); flushList();
+          const level = heading[1].length;
+          htmlLines.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+        } else if (quote) {
+          flushParagraph(); flushList();
+          htmlLines.push(`<blockquote>${inline(quote[1])}</blockquote>`);
+        } else if (ordered) {
+          flushParagraph();
+          if (!list || list.tag !== "ol") { flushList(); list = { tag: "ol", items: [] }; }
+          list.items.push(`<li>${inline(ordered[1])}</li>`);
+        } else if (unordered) {
+          flushParagraph();
+          if (!list || list.tag !== "ul") { flushList(); list = { tag: "ul", items: [] }; }
+          list.items.push(`<li>${inline(unordered[1])}</li>`);
+        } else if (line.trim() === "") {
+          flushParagraph(); flushList();
+        } else {
+          flushList();
+          paragraph.push(inline(line));
+        }
+      }
+      flushParagraph();
+      flushList();
+
+      let html = htmlLines.join("\n");
+      html = html.replace(/ BLOCK(\d+) /g, (m, i) => blocks[Number(i)]);
+      return html;
+    }
+
+    let saveTimer = null;
+    function scheduleSave() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        localStorage.setItem(DRAFT_KEY, editor.value);
+      }, 300);
+    }
+
+    function update() {
+      preview.innerHTML = renderMarkdown(editor.value);
+      scheduleSave();
+    }
+
+    editor.addEventListener("input", update);
+
+    const INSERTS = {
+      bold: { before: "**", after: "**", placeholder: "bold text" },
+      italic: { before: "*", after: "*", placeholder: "italic text" },
+      link: { before: "[", after: "](https://)", placeholder: "link text" },
+      code: { before: "`", after: "`", placeholder: "code" },
+      list: { before: "- ", after: "", placeholder: "list item", line: true },
+    };
+
+    document.querySelectorAll(".toolbar button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const spec = INSERTS[btn.dataset.insert];
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        const value = editor.value;
+
+        // Line-prefix inserts (List) are a pure insertion at the start of the
+        // current line - never consuming any existing characters - so the
+        // rest of the line (both before and after the cursor) can't be lost.
+        if (spec.line) {
+          const lineStart = value.lastIndexOf("\n", start - 1) + 1;
+          editor.value = value.slice(0, lineStart) + spec.before + value.slice(lineStart);
+          const shift = spec.before.length;
+          editor.focus();
+          editor.setSelectionRange(start + shift, end + shift);
+          update();
+          return;
+        }
+
+        const selected = value.slice(start, end);
+        const text = selected || spec.placeholder;
+        const insert = spec.before + text + spec.after;
+        editor.value = value.slice(0, start) + insert + value.slice(end);
+        const selStart = start + spec.before.length;
+        const selEnd = selStart + text.length;
+        editor.focus();
+        editor.setSelectionRange(selStart, selEnd);
+        update();
+      });
+    });
+
+    const saved = localStorage.getItem(DRAFT_KEY);
+    editor.value = saved !== null ? saved : "# Welcome\n\nStart typing **Markdown** on the left to see it rendered on the right.";
+    update();
+  </script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quote Generator</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+    max-width: 640px;
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .quote-card {
+    padding: 28px 26px;
+    margin-bottom: 18px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: opacity 0.18s ease;
+  }
+  .quote-card[hidden] { display: none; }
+  .quote-card.fading { opacity: 0; }
+
+  .quote-text {
+    margin: 0 0 20px;
+    font-size: clamp(18px, 3.4vw, 24px);
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  .quote-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .fav-btn {
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    color: var(--text-muted);
+    font-size: 17px;
+    cursor: pointer;
+  }
+  .fav-btn:hover { border-color: var(--accent-bg); color: var(--accent-bg); }
+  .fav-btn.active { color: var(--accent-bg); border-color: var(--accent-bg); }
+
+  .copy-note { min-height: 18px; font-size: 12px; color: var(--text-muted); margin: 12px 0 0; }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 26px; }
+  .btn-row .tool-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    background: var(--surface);
+  }
+  .btn-row .tool-btn:hover { border-color: var(--accent-bg); }
+  .btn-row .tool-btn.primary {
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    border-color: var(--accent-bg);
+  }
+  .btn-row .tool-btn.primary:hover { filter: brightness(1.08); }
+
+  .fav-btn:focus-visible, .tool-btn:focus-visible, .favorite-remove:focus-visible {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+
+  .favorites-panel[hidden] { display: none; }
+  .favorites-panel h2 { font-size: 16px; margin: 0 0 14px; }
+  .favorites-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .favorite-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .favorite-text { flex: 1; font-size: 14px; line-height: 1.5; }
+  .favorite-remove {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-alt);
+    color: var(--accent-bg);
+    cursor: pointer;
+  }
+  .favorite-remove:hover { filter: brightness(1.15); }
+  .empty-hint { color: var(--text-muted); font-size: 13px; }
+  .empty-hint[hidden] { display: none; }
+</style>
+</head>
+<body>
+  <h1>Quote Generator</h1>
+  <p class="sub">A random dose of motivation.</p>
+
+  <div class="quote-card" id="quoteCard">
+    <p class="quote-text" id="quoteText"></p>
+    <div class="quote-actions">
+      <button type="button" id="favoriteBtn" class="fav-btn" aria-pressed="false" aria-label="Favorite this quote">
+        <i class="fa-regular fa-star" id="favIcon"></i>
+      </button>
+      <button type="button" id="copyBtn" class="tool-btn">
+        <i class="fa-regular fa-copy"></i> Copy
+      </button>
+    </div>
+    <p class="copy-note" id="copyNote" role="status" aria-live="polite"></p>
+  </div>
+
+  <div class="btn-row">
+    <button type="button" id="newQuoteBtn" class="tool-btn primary">
+      <i class="fa-solid fa-shuffle"></i> New Quote
+    </button>
+    <button type="button" id="favToggleBtn" class="tool-btn" aria-pressed="false"></button>
+  </div>
+
+  <div class="favorites-panel" id="favoritesPanel" hidden>
+    <h2>Your Favorites</h2>
+    <ul id="favoritesList" class="favorites-list"></ul>
+    <p class="empty-hint" id="favEmptyHint" hidden>No favorites yet. Star a quote to save it here.</p>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const QUOTES = [
+      "Small steps still move you forward.",
+      "Progress hides inside repetition.",
+      "Confidence grows in the space you make for it.",
+      "The next attempt knows more than the last one did.",
+      "Momentum is built, not found.",
+      "A slow start is still a start.",
+      "Discipline is just patience with extra steps.",
+      "You can't edit a blank page, so write something.",
+      "Every skill was once an awkward first try.",
+      "Rest is part of the work, not a break from it.",
+      "Doubt is loud, but it isn't always right.",
+      "Consistency quietly outperforms intensity.",
+      "The path clears itself once you start walking.",
+      "Effort compounds when nobody's watching.",
+      "Curiosity is the cheapest form of courage.",
+      "Nothing improves by staying untouched.",
+      "A setback is just information with bad timing.",
+      "Focus is choosing what to ignore.",
+      "Growth feels like confusion while it's happening.",
+      "The hardest part is always the first minute.",
+      "Better is a direction, not a destination.",
+      "Practice turns pressure into routine.",
+      "You don't need permission to begin again.",
+      "Patience is a plan you can't rush.",
+      "What feels repetitive today becomes instinct tomorrow.",
+      "Small wins are still wins.",
+      "Clarity comes from moving, not from waiting.",
+      "The work introduces itself once you show up.",
+      "Tired hands still finish what steady minds start.",
+      "A good habit is a decision you stop having to make.",
+      "Comparison steals attention from your own progress.",
+      "Every expert was once confused in public.",
+      "Quiet effort adds up louder than it looks.",
+      "The first draft only needs to exist.",
+      "Direction matters more than speed.",
+      "Trying again is still trying.",
+    ];
+
+    const quoteCard = document.getElementById("quoteCard");
+    const quoteText = document.getElementById("quoteText");
+    const favoriteBtn = document.getElementById("favoriteBtn");
+    const favIcon = document.getElementById("favIcon");
+    const copyBtn = document.getElementById("copyBtn");
+    const copyNote = document.getElementById("copyNote");
+    const newQuoteBtn = document.getElementById("newQuoteBtn");
+    const favToggleBtn = document.getElementById("favToggleBtn");
+    const favoritesPanel = document.getElementById("favoritesPanel");
+    const favoritesList = document.getElementById("favoritesList");
+    const favEmptyHint = document.getElementById("favEmptyHint");
+
+    const FAV_KEY = "quotes_favorites";
+
+    let currentIndex = -1;
+    let viewingFavorites = false;
+    let copyNoteTimer = null;
+    let favs = loadFavorites();
+
+    // Same rejection-sampled CSPRNG approach as Dice Roller / Wheel Spinner,
+    // used here just to pick an unbiased random quote.
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function loadFavorites() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
+        return Array.isArray(arr) ? arr.filter(x => typeof x === "string") : [];
+      } catch { return []; }
+    }
+    function persistFavorites() {
+      localStorage.setItem(FAV_KEY, JSON.stringify(favs));
+    }
+    function isFavorite(text) { return favs.includes(text); }
+    function toggleFavorite(text) {
+      const i = favs.indexOf(text);
+      if (i === -1) favs.push(text); else favs.splice(i, 1);
+      persistFavorites();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function updateFavoriteButton() {
+      const active = isFavorite(QUOTES[currentIndex]);
+      favoriteBtn.classList.toggle("active", active);
+      favoriteBtn.setAttribute("aria-pressed", String(active));
+      favIcon.className = active ? "fa-solid fa-star" : "fa-regular fa-star";
+    }
+
+    function renderFavToggleLabel() {
+      favToggleBtn.setAttribute("aria-pressed", String(viewingFavorites));
+      favToggleBtn.innerHTML = viewingFavorites
+        ? '<i class="fa-solid fa-arrow-left"></i> Back to Random Quotes'
+        : `<i class="fa-solid fa-star"></i> View Favorites (${favs.length})`;
+    }
+
+    function renderFavorites() {
+      favEmptyHint.hidden = favs.length > 0;
+      favoritesList.innerHTML = favs.map((text, i) => `
+        <li class="favorite-row">
+          <span class="favorite-text">${escapeHtml(text)}</span>
+          <button type="button" class="favorite-remove" data-index="${i}" aria-label="Remove from favorites">
+            <i class="fa-solid fa-star"></i>
+          </button>
+        </li>
+      `).join("");
+
+      favoritesList.querySelectorAll(".favorite-remove").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const i = Number(btn.dataset.index);
+          favs.splice(i, 1);
+          persistFavorites();
+          renderFavorites();
+          renderFavToggleLabel();
+          if (currentIndex >= 0) updateFavoriteButton();
+        });
+      });
+    }
+
+    function setFavoritesView(on) {
+      viewingFavorites = on;
+      quoteCard.hidden = on;
+      favoritesPanel.hidden = !on;
+      renderFavToggleLabel();
+      if (on) renderFavorites();
+    }
+
+    function showQuote(index) {
+      quoteCard.classList.add("fading");
+      window.setTimeout(() => {
+        currentIndex = index;
+        quoteText.textContent = QUOTES[index];
+        updateFavoriteButton();
+        quoteCard.classList.remove("fading");
+      }, 160);
+    }
+
+    function pickNewQuote() {
+      let idx;
+      do { idx = secureRandomInt(QUOTES.length); } while (QUOTES.length > 1 && idx === currentIndex);
+      showQuote(idx);
+    }
+
+    newQuoteBtn.addEventListener("click", () => {
+      if (viewingFavorites) setFavoritesView(false);
+      pickNewQuote();
+    });
+
+    favToggleBtn.addEventListener("click", () => setFavoritesView(!viewingFavorites));
+
+    favoriteBtn.addEventListener("click", () => {
+      toggleFavorite(QUOTES[currentIndex]);
+      updateFavoriteButton();
+      renderFavToggleLabel();
+    });
+
+    // navigator.clipboard needs a secure context and can still be blocked by
+    // browser settings, so a hidden-textarea + execCommand fallback keeps
+    // Copy working in those cases instead of silently failing.
+    async function copyQuote(text) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch { /* fall through to legacy fallback */ }
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+
+    copyBtn.addEventListener("click", async () => {
+      const ok = await copyQuote(quoteText.textContent);
+      copyNote.textContent = ok ? "Copied to clipboard." : "Could not copy - select and copy the text manually.";
+      clearTimeout(copyNoteTimer);
+      copyNoteTimer = setTimeout(() => { copyNote.textContent = ""; }, 2200);
+    });
+
+    currentIndex = secureRandomInt(QUOTES.length);
+    quoteText.textContent = QUOTES[currentIndex];
+    updateFavoriteButton();
+    renderFavToggleLabel();
+  </script>
+</body>
+</html>

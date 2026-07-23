@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habit Tracker</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  .tool-input:focus-visible, textarea:focus-visible {
+    outline: none;
+    border-color: var(--accent-bg);
+    box-shadow: var(--focus-ring);
+  }
+  button:focus-visible, input[type="checkbox"]:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  #addHabitForm { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; max-width: 520px; }
+  #habitNameInput {
+    flex: 1;
+    min-width: 180px;
+    padding: 10px 12px;
+    font-size: 14px;
+    background: var(--surface);
+  }
+  #addHabitBtn {
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--accent-bg);
+    color: var(--accent-text);
+    border-color: var(--accent-bg);
+    white-space: nowrap;
+  }
+
+  .empty-state {
+    max-width: 520px;
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-muted);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+  }
+  .empty-state i { display: block; font-size: 30px; margin-bottom: 12px; }
+  .empty-state p { margin: 0; font-size: 14px; }
+
+  .habit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; max-width: 680px; }
+  .habit-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .habit-check { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 160px; cursor: pointer; }
+  .habit-check input[type="checkbox"] { width: 19px; height: 19px; flex-shrink: 0; accent-color: var(--accent-bg); cursor: pointer; }
+  .habit-name { font-size: 15px; font-weight: 600; word-break: break-word; }
+
+  .habit-streak {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .habit-streak i { color: var(--accent-bg); }
+  .habit-streak.zero i { color: var(--text-muted); }
+
+  .habit-grid { display: flex; gap: 4px; }
+  .habit-day {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+  }
+  .habit-day.done { background: var(--accent-bg); border-color: var(--accent-bg); }
+
+  .habit-delete {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+  .habit-delete:hover { color: var(--accent-bg); }
+</style>
+</head>
+<body>
+  <h1>Habit Tracker</h1>
+  <p class="sub">Track daily habits and build streaks.</p>
+
+  <form id="addHabitForm">
+    <input type="text" id="habitNameInput" class="tool-input" placeholder="Add a new habit..." maxlength="60" autocomplete="off" required>
+    <button type="submit" id="addHabitBtn" class="tool-btn">Add Habit</button>
+  </form>
+
+  <div class="empty-state" id="emptyState" hidden>
+    <i class="fa-solid fa-list-check"></i>
+    <p>No habits yet. Add one above to start building a streak.</p>
+  </div>
+
+  <ul class="habit-list" id="habitList"></ul>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const STORAGE_KEY = "habits_data";
+    const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    function makeId() {
+      if (window.crypto && typeof crypto.randomUUID === "function") return crypto.randomUUID();
+      return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function loadData() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (raw && Array.isArray(raw.habits) && raw.completions && typeof raw.completions === "object") {
+          return raw;
+        }
+      } catch {}
+      return { habits: [], completions: {} };
+    }
+
+    let data = loadData();
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function pad2(n) { return String(n).padStart(2, "0"); }
+    function dateKey(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+    function startOfToday() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }
+
+    function isDoneOn(habitId, key) {
+      const list = data.completions[habitId];
+      return Array.isArray(list) && list.includes(key);
+    }
+
+    // "Ending today" vs "ending yesterday" (per the on-page streak rule) is
+    // just which date the backward walk starts from - counting stops at the
+    // first gap either way.
+    function computeStreak(habitId, todayKey, today) {
+      const cursor = new Date(today);
+      if (!isDoneOn(habitId, todayKey)) cursor.setDate(cursor.getDate() - 1);
+      let streak = 0;
+      while (isDoneOn(habitId, dateKey(cursor))) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      return streak;
+    }
+
+    function last7Days(today) {
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        days.push(d);
+      }
+      return days;
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    const addHabitForm = document.getElementById("addHabitForm");
+    const habitNameInput = document.getElementById("habitNameInput");
+    const emptyState = document.getElementById("emptyState");
+    const habitList = document.getElementById("habitList");
+
+    // Re-checked every 30s (see bottom of file) rather than trusting a value
+    // computed once at load, so a tab left open across midnight rolls over
+    // its streaks/checkboxes without needing a manual refresh.
+    let lastRenderedDateKey = null;
+
+    function render() {
+      const today = startOfToday();
+      const todayKey = dateKey(today);
+      lastRenderedDateKey = todayKey;
+
+      const hasHabits = data.habits.length > 0;
+      emptyState.hidden = hasHabits;
+      habitList.hidden = !hasHabits;
+      if (!hasHabits) { habitList.innerHTML = ""; return; }
+
+      const days = last7Days(today);
+
+      habitList.innerHTML = data.habits.map(habit => {
+        const doneToday = isDoneOn(habit.id, todayKey);
+        const streak = computeStreak(habit.id, todayKey, today);
+
+        const gridHtml = days.map(d => {
+          const key = dateKey(d);
+          const done = isDoneOn(habit.id, key);
+          const label = `${WEEKDAY_NAMES[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()} — ${done ? "done" : "not done"}`;
+          return `<span class="habit-day${done ? " done" : ""}" title="${escapeHtml(label)}"></span>`;
+        }).join("");
+
+        return `
+          <li class="habit-row" data-id="${habit.id}">
+            <label class="habit-check">
+              <input type="checkbox" data-id="${habit.id}" ${doneToday ? "checked" : ""} aria-label="Mark ${escapeHtml(habit.name)} done today">
+              <span class="habit-name">${escapeHtml(habit.name)}</span>
+            </label>
+            <span class="habit-streak${streak === 0 ? " zero" : ""}"><i class="fa-solid fa-fire"></i> ${streak} day${streak === 1 ? "" : "s"}</span>
+            <div class="habit-grid" aria-label="Last 7 days">${gridHtml}</div>
+            <button type="button" class="habit-delete" data-id="${habit.id}" aria-label="Delete ${escapeHtml(habit.name)}"><i class="fa-solid fa-trash"></i></button>
+          </li>
+        `;
+      }).join("");
+    }
+
+    addHabitForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const name = habitNameInput.value.trim();
+      if (!name) return;
+      data.habits.push({ id: makeId(), name, createdAt: new Date().toISOString() });
+      habitNameInput.value = "";
+      saveData();
+      render();
+    });
+
+    habitList.addEventListener("click", e => {
+      const delBtn = e.target.closest(".habit-delete");
+      if (!delBtn) return;
+      const habit = data.habits.find(h => h.id === delBtn.dataset.id);
+      if (!habit) return;
+      if (!confirm(`Delete "${habit.name}"? This removes all its tracked history.`)) return;
+      data.habits = data.habits.filter(h => h.id !== habit.id);
+      delete data.completions[habit.id];
+      saveData();
+      render();
+    });
+
+    habitList.addEventListener("change", e => {
+      const chk = e.target.closest('input[type="checkbox"]');
+      if (!chk) return;
+      const id = chk.dataset.id;
+      const todayKey = dateKey(startOfToday());
+      if (!Array.isArray(data.completions[id])) data.completions[id] = [];
+      const list = data.completions[id];
+      const idx = list.indexOf(todayKey);
+      if (chk.checked && idx === -1) list.push(todayKey);
+      if (!chk.checked && idx !== -1) list.splice(idx, 1);
+      saveData();
+      render();
+    });
+
+    render();
+
+    setInterval(() => {
+      if (dateKey(startOfToday()) !== lastRenderedDateKey) render();
+    }, 30000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Word Counter</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../../code/CSS/shared.css">
+<link rel="stylesheet" href="../../code/CSS/tools.css">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; width: 100%; }
+  body {
+    font-family: system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 24px clamp(16px, 4vw, 48px);
+    background: var(--bg);
+    color: var(--text);
+  }
+  h1 { margin-bottom: 4px; }
+  p.sub { color: var(--text-muted); margin: 0 0 24px; }
+
+  button:focus-visible, textarea:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  .wc-textarea {
+    display: block;
+    width: 100%;
+    max-width: 760px;
+    box-sizing: border-box;
+    min-height: 220px;
+    padding: 14px 16px;
+    font-size: 15px;
+    line-height: 1.5;
+    resize: vertical;
+    background: var(--surface);
+  }
+  .wc-textarea:focus-visible { box-shadow: var(--focus-ring); }
+
+  .wc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0 4px; max-width: 760px; }
+  .wc-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--surface);
+  }
+  .wc-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .copy-note { font-size: 12px; color: var(--accent-bg); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin: 20px 0 28px;
+    max-width: 760px;
+  }
+  .stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .stat-value { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat-label { font-size: 12px; color: var(--text-muted); }
+
+  .top-words-section { max-width: 500px; }
+  .top-words-section h2 { font-size: 16px; margin: 0 0 10px; }
+  #topWordsList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+  #topWordsList li { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .tw-rank { color: var(--text-muted); width: 14px; flex-shrink: 0; }
+  .tw-word {
+    width: clamp(60px, 24vw, 110px);
+    flex-shrink: 0;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tw-bar-track { flex: 1; height: 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+  .tw-bar-fill { height: 100%; background: var(--accent-bg); border-radius: 999px; }
+  .tw-count { width: 26px; text-align: right; color: var(--text-muted); flex-shrink: 0; }
+  .top-words-empty { color: var(--text-muted); font-size: 13px; }
+</style>
+</head>
+<body>
+  <h1>Word Counter</h1>
+  <p class="sub">Word, character, and reading-time stats for any text.</p>
+
+  <textarea id="textInput" class="tool-input wc-textarea" placeholder="Paste or type your text here..." spellcheck="false"></textarea>
+
+  <div class="wc-actions">
+    <button type="button" class="tool-btn" id="copyBtn" disabled><i class="fa-regular fa-copy"></i> Copy Text</button>
+    <button type="button" class="tool-btn" id="clearBtn" disabled><i class="fa-solid fa-trash"></i> Clear</button>
+    <span class="copy-note" id="copyNote" aria-live="polite"></span>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><span class="stat-value" id="statWords">0</span><span class="stat-label">Words</span></div>
+    <div class="stat-card"><span class="stat-value" id="statChars">0</span><span class="stat-label">Characters</span></div>
+    <div class="stat-card"><span class="stat-value" id="statCharsNoSpace">0</span><span class="stat-label">Characters (no spaces)</span></div>
+    <div class="stat-card"><span class="stat-value" id="statSentences">0</span><span class="stat-label">Sentences</span></div>
+    <div class="stat-card"><span class="stat-value" id="statParagraphs">0</span><span class="stat-label">Paragraphs</span></div>
+    <div class="stat-card"><span class="stat-value" id="statReadTime">0 sec</span><span class="stat-label">Reading time (200 wpm)</span></div>
+    <div class="stat-card"><span class="stat-value" id="statSpeakTime">0 sec</span><span class="stat-label">Speaking time (130 wpm)</span></div>
+  </div>
+
+  <div class="top-words-section">
+    <h2>Top 5 Words</h2>
+    <ol id="topWordsList"></ol>
+    <p id="topWordsEmpty" class="top-words-empty">Start typing to see your most frequent words.</p>
+  </div>
+
+  <script src="../../code/General%20Code/sidebar.js"></script>
+  <script>
+    const STOPWORDS = new Set([
+      'the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'is', 'it', 'that', 'this',
+      'for', 'on', 'with', 'as', 'are', 'was', 'be', 'at', 'by', 'from', 'but',
+      'not', 'have', 'has', 'had', 'i', 'you', 'he', 'she', 'we', 'they', 'his',
+      'her', 'its', 'our', 'your', 'their', 'them', 'him', 'my', 'so', 'if',
+      'then', 'than', 'there', 'here', 'what', 'which', 'who', 'whom', 'when',
+      'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most',
+      'other', 'some', 'such', 'no', 'nor', 'only', 'own', 'same', 'too', 'very',
+      'can', 'will', 'just', 'do', 'does', 'did', 'doing', 'been', 'being', 'am',
+      'were', 'these', 'those', 'into', 'about', 'up', 'down', 'out', 'off',
+      'over', 'under', 'again', 'further', 'once',
+    ]);
+
+    const textInputEl = document.getElementById('textInput');
+    const copyBtn = document.getElementById('copyBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyNoteEl = document.getElementById('copyNote');
+    const statWordsEl = document.getElementById('statWords');
+    const statCharsEl = document.getElementById('statChars');
+    const statCharsNoSpaceEl = document.getElementById('statCharsNoSpace');
+    const statSentencesEl = document.getElementById('statSentences');
+    const statParagraphsEl = document.getElementById('statParagraphs');
+    const statReadTimeEl = document.getElementById('statReadTime');
+    const statSpeakTimeEl = document.getElementById('statSpeakTime');
+    const topWordsListEl = document.getElementById('topWordsList');
+    const topWordsEmptyEl = document.getElementById('topWordsEmpty');
+
+    let copyNoteTimer = null;
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function getWords(text) {
+      const trimmed = text.trim();
+      return trimmed === '' ? [] : trimmed.split(/\s+/);
+    }
+
+    function countSentences(text) {
+      const trimmed = text.trim();
+      if (trimmed === '') return 0;
+      return trimmed.split(/[.!?]+/).map(s => s.trim()).filter(s => s.length > 0).length;
+    }
+
+    function countParagraphs(text) {
+      const trimmed = text.trim();
+      if (trimmed === '') return 0;
+      return trimmed.split(/\n\s*\n+/).map(p => p.trim()).filter(p => p.length > 0).length;
+    }
+
+    function formatDuration(minutesFloat) {
+      const totalSeconds = Math.round(minutesFloat * 60);
+      if (totalSeconds < 60) return `${totalSeconds} sec`;
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = totalSeconds % 60;
+      return secs === 0 ? `${mins} min` : `${mins} min ${secs} sec`;
+    }
+
+    function topWords(text, count) {
+      const matches = text.toLowerCase().match(/[a-z0-9']+/g) || [];
+      const freq = new Map();
+      for (const raw of matches) {
+        const word = raw.replace(/^'+|'+$/g, '');
+        if (!word || STOPWORDS.has(word)) continue;
+        freq.set(word, (freq.get(word) || 0) + 1);
+      }
+      return [...freq.entries()].sort((a, b) => b[1] - a[1]).slice(0, count);
+    }
+
+    function renderTopWords(text) {
+      const top = topWords(text, 5);
+      if (top.length === 0) {
+        topWordsListEl.innerHTML = '';
+        topWordsEmptyEl.hidden = false;
+        return;
+      }
+      topWordsEmptyEl.hidden = true;
+      const max = top[0][1];
+      topWordsListEl.innerHTML = top.map(([word, count], i) => `
+        <li>
+          <span class="tw-rank">${i + 1}</span>
+          <span class="tw-word" title="${escapeHtml(word)}">${escapeHtml(word)}</span>
+          <span class="tw-bar-track"><span class="tw-bar-fill" style="width:${Math.max(6, Math.round((count / max) * 100))}%"></span></span>
+          <span class="tw-count">${count}</span>
+        </li>
+      `).join('');
+    }
+
+    function updateStats() {
+      const text = textInputEl.value;
+      const words = getWords(text);
+      statWordsEl.textContent = words.length;
+      statCharsEl.textContent = text.length;
+      statCharsNoSpaceEl.textContent = text.replace(/\s/g, '').length;
+      statSentencesEl.textContent = countSentences(text);
+      statParagraphsEl.textContent = countParagraphs(text);
+      statReadTimeEl.textContent = formatDuration(words.length / 200);
+      statSpeakTimeEl.textContent = formatDuration(words.length / 130);
+      renderTopWords(text);
+
+      const empty = text.length === 0;
+      copyBtn.disabled = empty;
+      clearBtn.disabled = empty;
+    }
+
+    textInputEl.addEventListener('input', updateStats);
+
+    clearBtn.addEventListener('click', () => {
+      textInputEl.value = '';
+      updateStats();
+      textInputEl.focus();
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      if (!textInputEl.value) return;
+      try {
+        await navigator.clipboard.writeText(textInputEl.value);
+        copyNoteEl.textContent = 'Copied!';
+      } catch {
+        copyNoteEl.textContent = 'Could not copy automatically - select the text and copy it manually.';
+      }
+      clearTimeout(copyNoteTimer);
+      copyNoteTimer = setTimeout(() => { copyNoteEl.textContent = ''; }, 1800);
+    });
+
+    updateStats();
+  </script>
+</body>
+</html>

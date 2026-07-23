@@ -282,8 +282,20 @@ select:focus-visible, .toolbar button:focus-visible, .toolbar input[type="text"]
   transition: opacity 0.2s ease;
   pointer-events: none;
 }
-.game-card:hover .info {
+/* Revealed on hover (mouse), focus-within (keyboard tabs onto the card or its
+   favorite button), and .info-open (the first tap on touch, since there's no
+   hover there - see the click handler in games.js). */
+.game-card:hover .info,
+.game-card:focus-within .info,
+.game-card.info-open .info {
   opacity: 1;
+}
+
+/* Keyboard focus ring for the now-focusable cards (role=button, tabindex=0).
+   :focus-visible so it only shows for keyboard focus, not mouse clicks. */
+.game-card:focus-visible {
+  outline: 2px solid var(--accent-bg);
+  outline-offset: 2px;
 }
 .game-card .info .tags {
   display: flex;

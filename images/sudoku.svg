@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#94a3b8"/><stop offset="1" stop-color="#1e293b"/></linearGradient></defs>
+  <rect width="600" height="600" fill="url(#g)"/>
+  <g stroke="#ffffff" stroke-width="4" opacity="0.5">
+    <rect x="216" y="150" width="168" height="168" fill="none"/>
+    <line x1="272" y1="150" x2="272" y2="318"/>
+    <line x1="328" y1="150" x2="328" y2="318"/>
+    <line x1="216" y1="206" x2="384" y2="206"/>
+    <line x1="216" y1="262" x2="384" y2="262"/>
+  </g>
+  <text x="300" y="430" font-family="'Segoe UI', Arial, sans-serif" font-size="74" font-weight="800" fill="#f8fafc" text-anchor="middle">SUDOKU</text>
+</svg>

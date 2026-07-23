@@ -1,199 +1,468 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>UGS Files</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #2e3244 0%, #36224b 100%);
-            min-height: 100vh;
-            margin: 0;
-            padding: 0;
-            display: flex;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UGS Files</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  /* This page is loaded in an iframe by UGS.html, so (like the site's other
+     *SRC.html iframe pages - HTMLVIEWERSRC, YOUTUBEUNBLOCKERSRC) it doesn't
+     pull in shared.css/sidebar.js: that would inject a second, nested site
+     sidebar inside the iframe. Colors below are a fixed palette echoing the
+     site's default theme rather than the live-swappable CSS vars, same as
+     those other SRC pages. */
+  :root {
+    --bg: #1c0808;
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-alt: rgba(255, 255, 255, 0.1);
+    --accent: #e64848;
+    --accent-hover: #ff3131;
+    --text: #ffffff;
+    --text-muted: rgba(255, 255, 255, 0.65);
+    --border: rgba(255, 255, 255, 0.15);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 80px;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
-            padding: 20px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            overflow-y: auto;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
-            z-index: 1000;
-        }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 84px;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(10px);
+    padding: 16px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    z-index: 20;
+  }
+  .sidebar-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 4px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .sidebar-btn:hover { background: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+  .sidebar-btn.empty { opacity: 0.35; cursor: default; }
+  .sidebar-btn.empty:hover { background: var(--surface); border-color: var(--border); transform: none; }
 
-        .sidebar::-webkit-scrollbar {
-            width: 6px;
-        }
+  .main-content { margin-left: 100px; padding: 20px clamp(16px, 3vw, 36px) 60px; min-width: 0; }
 
-        .sidebar::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.1);
-        }
+  h1 { text-align: center; margin: 6px 0 4px; }
+  .sub-links { text-align: center; color: var(--text-muted); font-size: 13px; margin: 0 0 4px; }
+  .sub-links a { color: var(--accent-hover); text-decoration: none; }
+  .sub-links a:hover { text-decoration: underline; }
 
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.3);
-            border-radius: 3px;
-        }
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    padding: 14px 0 12px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab {
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-        .sidebar-btn {
-            background: rgb(89, 134, 218);
-            border: none;
-            padding: 12px;
-            font-size: 18px;
-            font-weight: 700;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            color: white;
-            text-align: center;
-            min-height: 45px;
-        }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  #searchInput {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px 10px 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  #searchInput:focus { outline: none; border-color: var(--accent); }
+  .search-wrap i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px; }
 
-        .sidebar-btn:hover {
-            background: #79aadb;
-            transform: scale(1.05);
-        }
+  #randomBtn {
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #randomBtn:hover { background: var(--accent); border-color: var(--accent); }
 
-        .sidebar-btn.empty {
-            opacity: 0.4;
-            cursor: default;
-        }
+  #resultCount { color: var(--text-muted); font-size: 12px; margin: 0 0 14px; }
 
-        .sidebar-btn.empty:hover {
-            transform: none;
-            background: rgb(89, 134, 218);
-        }
+  .letter-section { margin-bottom: 34px; }
+  .letter-section.section-hidden { display: none; }
+  .letter-header {
+    font-size: 26px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+  .buttons-container { display: flex; flex-direction: column; gap: 6px; max-width: 680px; }
 
-        .main-content {
-            margin-left: 100px;
-            flex: 1;
-            padding: 20px;
-        }
+  .ugs-row { position: relative; display: block; }
+  .ugs-row.row-hidden { display: none; }
+  .ugs-row input[type="button"] {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 34px 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+  .ugs-row input[type="button"]:hover { background: var(--accent); border-color: var(--accent); color: #fff; transform: translateY(-1px); }
+  .ugs-row input[type="button"]:active { transform: translateY(0); }
+  .ugs-row input[type="button"]:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }
 
-        h1 {
-            color: white;
-            text-align: center;
-            margin-bottom: 30px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
+  .fav-star {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+  .fav-star:hover { color: #ffd166; }
+  .fav-star.favorited { color: #ffd166; }
 
-        .letter-section {
-            margin-bottom: 40px;
-            padding: 0 20px;
-            max-width: 900px;
-            margin-left: auto;
-            margin-right: auto;
-            min-height: 100px;
-        }
+  .empty-message { color: var(--text-muted); font-style: italic; padding: 20px 0; }
+  #noResults { display: none; color: var(--text-muted); font-size: 14px; padding: 30px 0; text-align: center; }
 
-        .letter-section.empty {
-            opacity: 0.5;
-        }
+  #recentGrid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .recent-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .recent-chip:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-        .letter-header {
-            color: white;
-            font-size: 32px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid rgba(255,255,255,0.3);
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
+  #browseView.view-hidden, #recentView.view-hidden { display: none; }
 
-        .buttons-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            align-items: center;
-        }
+  #loadFallbackBtn {
+    display: block;
+    margin: 16px auto 0;
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #loadFallbackBtn:hover { color: var(--text); }
 
-        .empty-message {
-            color: rgba(255,255,255,0.6);
-            font-style: italic;
-            text-align: center;
-            padding: 20px;
-        }
-
-        input[type="button"] {
-            background: rgb(89, 134, 218);
-            border: none;
-            padding: 15px 30px;
-            font-size: 16px;
-            font-weight: 500;
-            border-radius: 8px;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-            width: 100%;
-            max-width: 600px;
-            color: white;
-            text-align: left;
-        }
-
-        input[type="button"]:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.2);
-            background: #79aadb;
-        }
-
-        input[type="button"]:active {
-            transform: translateY(0);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 60px;
-                padding: 15px 5px;
-            }
-            .sidebar-btn {
-                padding: 8px;
-                font-size: 16px;
-            }
-            .main-content {
-                margin-left: 70px;
-            }
-        }
-    </style>
+  @media (max-width: 768px) {
+    .sidebar { width: 56px; padding: 12px 4px; }
+    .sidebar-btn { padding: 8px 2px; font-size: 12px; }
+    .main-content { margin-left: 66px; }
+  }
+</style>
 </head>
 <body>
-    <div class="sidebar" id="sidebar">
+  <div class="sidebar" id="sidebar"></div>
+
+  <div class="main-content">
+    <h1>UGS Files</h1>
+    <p class="sub-links">
+      From the <a href="https://docs.google.com/document/d/1_FmH3BlSBQI7FGgAQL59-ZPe8eCxs35wel6JUyVaG8Q/" target="_blank" rel="noopener">Ultimate Game Stash Google Doc</a>
+      &middot; Discord: <a href="https://discord.gg/rmVsAqkpkA" target="_blank" rel="noopener">discord.gg/rmVsAqkpkA</a>
+    </p>
+
+    <div class="toolbar">
+      <div class="tabs" id="viewTabs">
+        <button type="button" class="tab active" data-view="all">All</button>
+        <button type="button" class="tab" data-view="favorites">Favorites</button>
+        <button type="button" class="tab" data-view="recent">Recently Played</button>
+      </div>
+      <div class="search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search games...">
+      </div>
+      <button type="button" id="randomBtn"><i class="fa-solid fa-dice"></i> Random Game</button>
     </div>
 
-    <div class="main-content">
-        <h1>UGS Files</h1>
-    <h2 style="color: white; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-weight: normal; font-size: 18px;">
-    Files from
-    <a href="https://docs.google.com/document/d/1_FmH3BlSBQI7FGgAQL59-ZPe8eCxs35wel6JUyVaG8Q/"
-        target="_blank"
-        style="display: inline; color: #79aadb; text-decoration: none; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
-        Ultimate Game Stash Google Doc
-    </a>
-    </h2>
-    <h2 style="color: white; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-weight: normal; font-size: 18px;">
-    Discord Server:
-    <a href="https://discord.gg/rmVsAqkpkA"
-        target="_blank"
-        style="display: inline; color: #79aadb; text-decoration: none; font-size: 18px; text-shadow: 1px 1px 2px rgba(0,0,0,0.2);">
-        https://discord.gg/rmVsAqkpkA
-    </a>
-    <h2 style="color: white; text-align: center; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-weight: normal; font-size: 18px;">
-        <input type="text" placeholder="Search..." id="searchInput" style="padding: 13px; width: 100%; max-width: 420px; border-radius: 8px; border: none; box-shadow: 0 2px 4px rgba(7, 105, 218, 0.1);">
-        <script src="https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/searchbut.js"></script>
-    <button id="lolbutton" onclick="const script = document.createElement('script');script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@latest/game.js';document.body.appendChild(script);">Click to load if it isnt loading</button>
-    </h2>
+    <p id="resultCount"></p>
 
-
-        <div id="sections-container">
-        </div>
+    <div id="browseView">
+      <div id="sections-container"></div>
+      <p id="noResults"></p>
+      <button type="button" id="loadFallbackBtn" onclick="const script = document.createElement('script');script.src = 'https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@latest/game.js';document.body.appendChild(script);">Click here if the list isn't loading</button>
     </div>
-    <script src="https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/games.js"></script>
-   </body>
-   </html>
+
+    <div id="recentView" class="view-hidden">
+      <div id="recentGrid"></div>
+      <p class="empty-message" id="recentEmpty" style="display:none">Nothing launched yet — games you play will show up here.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/games.js"></script>
+  <script>
+    // This whole block only ever reads/wraps the real <input type="button">
+    // elements games.js generates and calls .click() on the real ones to
+    // launch - it never re-implements or depends on knowing how games.js
+    // actually fetches/opens a game, so it keeps working even if that
+    // upstream mechanism changes.
+    const FAVORITES_KEY = "ugs_favorites";
+    const RECENT_KEY = "ugs_recent";
+    const RECENT_LIMIT = 24;
+
+    function secureRandomInt(maxExclusive) {
+      const maxUint32 = 0xFFFFFFFF;
+      const limit = maxUint32 - (maxUint32 % maxExclusive);
+      const buf = new Uint32Array(1);
+      let x;
+      do {
+        crypto.getRandomValues(buf);
+        x = buf[0];
+      } while (x >= limit);
+      return x % maxExclusive;
+    }
+
+    function loadFavorites() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(FAVORITES_KEY));
+        return Array.isArray(parsed) ? new Set(parsed) : new Set();
+      } catch { return new Set(); }
+    }
+    function saveFavorites() {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favorites]));
+    }
+    function loadRecent() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(RECENT_KEY));
+        return Array.isArray(parsed) ? parsed : [];
+      } catch { return []; }
+    }
+    function recordRecent(value) {
+      recent = [value, ...recent.filter(v => v !== value)].slice(0, RECENT_LIMIT);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+    }
+
+    let favorites = loadFavorites();
+    let recent = loadRecent();
+    let activeView = "all";
+
+    const sectionsContainer = document.getElementById("sections-container");
+    const noResultsEl = document.getElementById("noResults");
+    const resultCountEl = document.getElementById("resultCount");
+    const searchInput = document.getElementById("searchInput");
+    const viewTabs = document.getElementById("viewTabs");
+    const browseView = document.getElementById("browseView");
+    const recentView = document.getElementById("recentView");
+    const recentGrid = document.getElementById("recentGrid");
+    const recentEmpty = document.getElementById("recentEmpty");
+    const randomBtn = document.getElementById("randomBtn");
+
+    function wrapButton(btn) {
+      btn.dataset.ugsEnhanced = "true";
+      const row = document.createElement("span");
+      row.className = "ugs-row";
+      row.dataset.value = btn.value;
+      btn.parentNode.insertBefore(row, btn);
+      row.appendChild(btn);
+
+      const star = document.createElement("button");
+      star.type = "button";
+      const isFav = favorites.has(btn.value);
+      star.className = "fav-star" + (isFav ? " favorited" : "");
+      star.setAttribute("aria-label", "Toggle favorite");
+      star.textContent = isFav ? "★" : "☆";
+      star.addEventListener("click", e => {
+        e.stopPropagation();
+        const nowFav = !favorites.has(btn.value);
+        if (nowFav) favorites.add(btn.value); else favorites.delete(btn.value);
+        saveFavorites();
+        star.classList.toggle("favorited", nowFav);
+        star.textContent = nowFav ? "★" : "☆";
+        if (activeView === "favorites") applyFilters();
+      });
+      row.appendChild(star);
+    }
+
+    // Handles both possible timings: games.js may have already populated
+    // #sections-container synchronously by the time this script runs (this
+    // scan catches it), or may populate later/again via the fallback button
+    // below (the observer catches that). data-ugsEnhanced guards against
+    // wrapping the same button twice if both paths ever overlap.
+    function enhance(scopeEl) {
+      const found = [];
+      if (scopeEl.matches && scopeEl.matches('input[type="button"]') && !scopeEl.dataset.ugsEnhanced) found.push(scopeEl);
+      if (scopeEl.querySelectorAll) {
+        scopeEl.querySelectorAll('input[type="button"]:not([data-ugs-enhanced])').forEach(b => {
+          if (!b.dataset.ugsEnhanced) found.push(b);
+        });
+      }
+      found.forEach(wrapButton);
+      if (found.length) applyFilters();
+    }
+
+    enhance(sectionsContainer);
+    new MutationObserver(mutations => {
+      mutations.forEach(m => m.addedNodes.forEach(node => enhance(node)));
+    }).observe(sectionsContainer, { childList: true, subtree: true });
+
+    sectionsContainer.addEventListener("click", e => {
+      if (e.target.tagName === "INPUT" && e.target.type === "button") {
+        recordRecent(e.target.value);
+      }
+    });
+
+    function applyFilters() {
+      const query = searchInput.value.trim().toLowerCase();
+      let visibleCount = 0;
+      let anyVisible = false;
+
+      sectionsContainer.querySelectorAll(".letter-section").forEach(section => {
+        let sectionHasVisible = false;
+        section.querySelectorAll(".ugs-row").forEach(row => {
+          const value = row.dataset.value || "";
+          const matchesSearch = !query || value.toLowerCase().includes(query);
+          const matchesView = activeView !== "favorites" || favorites.has(value);
+          const visible = matchesSearch && matchesView;
+          row.classList.toggle("row-hidden", !visible);
+          if (visible) { sectionHasVisible = true; visibleCount++; }
+        });
+        section.classList.toggle("section-hidden", !sectionHasVisible);
+        if (sectionHasVisible) anyVisible = true;
+      });
+
+      noResultsEl.style.display = anyVisible ? "none" : "block";
+      noResultsEl.textContent = activeView === "favorites"
+        ? "No favorites yet — click the star on any game to add one."
+        : "No games match your search.";
+      resultCountEl.textContent = `${anyVisible ? "Showing " : ""}${visibleCount} game${visibleCount === 1 ? "" : "s"}`;
+    }
+
+    let searchDebounce = null;
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(applyFilters, 120);
+    });
+
+    function renderRecent() {
+      recentGrid.innerHTML = "";
+      recentEmpty.style.display = recent.length ? "none" : "block";
+      recent.forEach(value => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "recent-chip";
+        chip.textContent = value;
+        chip.addEventListener("click", () => launchByValue(value));
+        recentGrid.appendChild(chip);
+      });
+    }
+
+    function launchByValue(value) {
+      const escaped = window.CSS && CSS.escape ? CSS.escape(value) : value.replace(/["\\]/g, "\\$&");
+      const original = sectionsContainer.querySelector(`input[type="button"][value="${escaped}"]`);
+      if (original) {
+        original.scrollIntoView({ behavior: "smooth", block: "center" });
+        original.click();
+      }
+    }
+
+    viewTabs.addEventListener("click", e => {
+      const tab = e.target.closest(".tab");
+      if (!tab) return;
+      activeView = tab.dataset.view;
+      [...viewTabs.children].forEach(t => t.classList.toggle("active", t === tab));
+
+      if (activeView === "recent") {
+        browseView.classList.add("view-hidden");
+        recentView.classList.remove("view-hidden");
+        resultCountEl.textContent = "";
+        renderRecent();
+      } else {
+        recentView.classList.add("view-hidden");
+        browseView.classList.remove("view-hidden");
+        applyFilters();
+      }
+    });
+
+    randomBtn.addEventListener("click", () => {
+      const pool = [...sectionsContainer.querySelectorAll('input[type="button"]')];
+      if (pool.length === 0) return;
+      const pick = pool[secureRandomInt(pool.length)];
+
+      activeView = "all";
+      [...viewTabs.children].forEach(t => t.classList.toggle("active", t.dataset.view === "all"));
+      recentView.classList.add("view-hidden");
+      browseView.classList.remove("view-hidden");
+      searchInput.value = "";
+      applyFilters();
+
+      pick.scrollIntoView({ behavior: "smooth", block: "center" });
+      pick.click();
+    });
+  </script>
+</body>
+</html>
