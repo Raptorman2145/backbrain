@@ -167,6 +167,8 @@
   .blocked-msg-placeholder.deleted-msg-plain:hover { color: var(--text-muted); }
   .edited-tag { font-size: 10px; color: var(--text-muted); font-style: italic; }
   .deleted-tag { font-size: 11px; color: var(--text-muted); font-style: italic; margin-bottom: 2px; }
+  .undo-delete-btn { font-style: normal; font-size: 11px; padding: 1px 7px; margin-left: 4px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); color: var(--text); cursor: pointer; font-family: inherit; }
+  .undo-delete-btn:hover { border-color: var(--accent-bg); color: var(--accent-bg); }
   .msg-edit-wrap { margin-top: 2px; }
   .msg-edit-input {
     width: 100%; box-sizing: border-box; resize: vertical; min-height: 44px;
@@ -194,15 +196,25 @@
   .channel-row:hover .del-channel { opacity: 1; }
   .channel-row .channel-pin-toggle { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; flex-shrink: 0; }
   .channel-row:hover .channel-pin-toggle { opacity: 1; }
+  .channel-row .channel-noclear-toggle { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; flex-shrink: 0; }
+  .channel-row:hover .channel-noclear-toggle { opacity: 1; }
+  .channel-row .channel-noclear-toggle.active { opacity: 1; color: var(--accent-bg); }
   .channel-pin-icon { color: var(--accent-bg); font-size: 10px; }
-  .add-channel-row { display: flex; gap: 4px; padding: 6px 8px; }
+  .channel-clearance-icon { color: var(--text-muted); font-size: 10px; }
+  .add-channel-row { display: flex; flex-direction: column; gap: 4px; padding: 6px 8px; }
   .add-channel-row[hidden] { display: none; }
+  .add-channel-inputs { display: flex; gap: 4px; }
   .add-channel-row input {
     flex: 1; min-width: 0; padding: 6px 8px; font-size: 12px;
     background: var(--surface);
   }
   .add-channel-row button {
     padding: 6px 10px; background: var(--surface); font-size: 12px;
+  }
+  .add-channel-row select {
+    width: 100%; box-sizing: border-box; padding: 5px 6px; font-size: 11px;
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); color: var(--text-muted); font-family: inherit;
   }
 
   .chat-identity { padding: 10px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 6px; background: color-mix(in srgb, var(--bg) 65%, black); }
@@ -223,6 +235,12 @@
   .message-list { flex: 1; overflow-y: auto; padding: 16px; }
   .msg-row { margin-bottom: 14px; display: flex; gap: 10px; position: relative; }
   .msg-row.msg-continuation { margin-bottom: 2px; }
+  /* The row a continuation is grouped WITH also needs the tight gap, not
+     just continuations grouped with each other - otherwise the jump from
+     the header row down to its own first continuation still used the full
+     14px meant for separate people/groups, while every gap after that was
+     2px. That mismatch is what read as jarring, not the 2px itself. */
+  .msg-row:has(+ .msg-continuation) { margin-bottom: 2px; }
   .msg-avatar-slot { width: 32px; flex-shrink: 0; }
   .msg-avatar-slot .avatar-circle, .msg-avatar-slot .avatar-circle-fallback { width: 32px; height: 32px; font-size: 13px; }
   .msg-body { flex: 1; min-width: 0; }
@@ -302,7 +320,20 @@
   .server-invite-join-btn { padding: 6px 14px; background: var(--accent-bg); color: var(--accent-text); border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 12px; cursor: pointer; flex-shrink: 0; }
   .server-invite-join-btn:disabled { opacity: .7; cursor: default; }
 
-  .msg-hover-actions { position: absolute; top: -10px; right: 4px; display: flex; gap: 2px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); opacity: 0; transition: opacity .1s; }
+  /* The reply/edit/delete/pin bar floats in the top-right corner (position
+     relative to the whole .msg-row, not just .msg-body). Reactions used to
+     live here too, but now sit below the message instead (see .msg-reactions
+     further down) - this toolbar is hover-actions only these days. */
+  .msg-corner-toolbar { position: absolute; top: -10px; right: 4px; display: flex; align-items: center; gap: 4px; z-index: 1; }
+  /* A continuation row is only one text line tall with a ~2-4px gap above it
+     (see the :has() grouping rule above) - floating the toolbar -10px above
+     its own top would overlap the previous line's text. Centering it within
+     the row's own (short) height instead keeps it clear of any neighbor
+     regardless of how tight the grouping gets. Header rows have real room
+     above them (a fresh group always gets the full 14px gap), so they keep
+     the classic floating-above look. */
+  .msg-row.msg-continuation .msg-corner-toolbar { top: 50%; transform: translateY(-50%); }
+  .msg-hover-actions { display: flex; gap: 2px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); opacity: 0; transition: opacity .1s; }
   .msg-row:hover .msg-hover-actions, .msg-row.msg-actions-tapped .msg-hover-actions { opacity: 1; }
   .msg-action-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 5px 8px; font-size: 12px; }
   .msg-action-btn:hover { color: var(--accent-bg); }
@@ -316,12 +347,19 @@
   @keyframes msgRowHighlightFlash { from { background: color-mix(in srgb, var(--accent-bg) 22%, transparent); } to { background: transparent; } }
   .msg-row-highlight { animation: msgRowHighlightFlash 1.5s ease; border-radius: var(--radius-sm); }
 
-  .msg-reactions { display: flex; gap: 6px; margin-top: 4px; opacity: 0; transition: opacity .1s; }
-  .msg-reactions.has-reactions { opacity: 1; }
-  .msg-row:hover .msg-reactions, .msg-row.msg-actions-tapped .msg-reactions { opacity: 1; }
-  .msg-reaction-btn { display: flex; align-items: center; gap: 3px; background: var(--surface); border: 1px solid transparent; border-radius: 12px; color: var(--text-muted); font-size: 11px; padding: 2px 7px; cursor: pointer; }
+  /* Reacted emojis sit in their own strip below the message (back in normal
+     flow, inside .msg-body), always visible. The "add a reaction" trigger
+     itself lives with reply/edit/delete/pin in the corner toolbar instead
+     (.msg-reaction-add-btn there is a plain .msg-action-btn) - clicking it
+     expands the picker below rather than only revealing it on hover, so
+     it's reachable on touch devices too. */
+  .msg-reactions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .msg-reactions-summary { display: flex; flex-wrap: wrap; gap: 4px; }
+  .msg-reactions-picker { display: none; gap: 2px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px; }
+  .msg-reactions.expanded .msg-reactions-picker { display: flex; }
+  .msg-reaction-btn { display: flex; align-items: center; gap: 3px; background: var(--surface); border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--text-muted); font-size: 11px; padding: 3px 6px; cursor: pointer; }
   .msg-reaction-btn:hover { border-color: var(--border-strong); }
-  .msg-reaction-btn.active { background: var(--surface-alt); border-color: var(--accent-bg); }
+  .msg-reaction-btn.active { background: var(--surface); border-color: var(--accent-bg); }
   .msg-reaction-emoji { font-size: 13px; line-height: 1; }
 
   .link-chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
@@ -471,6 +509,17 @@
   .user-card-actions button:hover { border-color: var(--accent-bg); }
   .user-card-actions button.danger { background: #c0392b; border-color: #c0392b; color: #fff; }
   .danger-action-btn { width: 100%; margin-top: 10px; padding: 10px; background: #c0392b; color: #fff; border: none; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; font-family: inherit; }
+
+  .profile-accordion { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .profile-accordion-toggle {
+    display: flex; align-items: center; width: 100%; background: none; border: none;
+    color: var(--text); font-size: 13px; font-weight: 700; font-family: inherit;
+    cursor: pointer; padding: 2px 0;
+  }
+  .profile-accordion-toggle i.profile-accordion-chevron { margin-left: auto; font-size: 11px; color: var(--text-muted); transition: transform 0.25s ease; }
+  .profile-accordion-toggle.open i.profile-accordion-chevron { transform: rotate(180deg); }
+  .profile-accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .profile-accordion-content.open { max-height: 320px; }
   .user-card-actions button.primary { background: var(--accent-bg); border-color: var(--accent-bg); color: var(--accent-text); }
 
   #saveProfileBtn, #joinForm button[type="submit"], #createServerBtn, #joinByIdBtn, #createPollBtn, #saveAnnouncementBtn { margin-top: 20px; width: 100%; padding: 12px; font-size: 14px; font-weight: 700; border: none; border-radius: var(--radius-sm); background: var(--accent-bg); color: var(--accent-text); cursor: pointer; font-family: inherit; }
@@ -657,8 +706,11 @@
       </div>
       <div class="channel-list" id="channelList"></div>
       <div class="add-channel-row" id="addChannelRow">
-        <input type="text" id="newChannelName" class="tool-input" placeholder="New channel..." maxlength="24">
-        <button type="button" id="addChannelBtn" class="tool-btn" aria-label="Add channel" data-tooltip="Add channel">+</button>
+        <div class="add-channel-inputs">
+          <input type="text" id="newChannelName" class="tool-input" placeholder="New channel..." maxlength="24">
+          <button type="button" id="addChannelBtn" class="tool-btn" aria-label="Add channel" data-tooltip="Add channel">+</button>
+        </div>
+        <select id="newChannelMinRole" data-tooltip="Only accounts at this clearance or higher will even see this channel exists"></select>
       </div>
       <div id="dmPane" hidden>
         <div class="dm-pane-header">Direct Messages</div>
@@ -681,6 +733,7 @@
         <button type="button" id="archivesBtn" class="server-header-action" data-tooltip="Archived messages (3 days after a clear, read-only)" aria-label="Archived messages"><i class="fa-solid fa-box-archive"></i></button>
         <button type="button" id="bansPanelBtn" class="server-header-action" data-tooltip="Active bans (mod+)" aria-label="Active bans" hidden><i class="fa-solid fa-shield-halved"></i></button>
         <button type="button" id="clearChannelBtn" class="server-header-action" data-tooltip="Clear this channel's messages (mod+)" aria-label="Clear this channel" hidden><i class="fa-solid fa-broom"></i></button>
+        <button type="button" id="formAutomationBtn" class="server-header-action" data-tooltip="Google Form automation (admin+)" aria-label="Google Form automation" hidden><i class="fa-solid fa-file-import"></i></button>
       </div>
       <div class="message-list" id="messageList"></div>
       <div class="typing-indicator" id="typingIndicator"></div>
@@ -769,8 +822,30 @@
       <input type="checkbox" id="censorEnabledCheckbox" style="width:auto;">
       <span>Censor bad words in messages</span>
     </label>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;" data-tooltip="Hides the 'X is online' / 'X went offline' notices - only affects your own screen, nobody else's">
+      <input type="checkbox" id="hidePresenceLogsCheckbox" style="width:auto;">
+      <span>Hide online/offline notices</span>
+    </label>
     <div class="modal-error" id="profileModalError"></div>
     <button type="button" id="saveProfileBtn">Save</button>
+
+    <div class="profile-accordion">
+      <button type="button" id="passwordAccordionToggle" class="profile-accordion-toggle" data-tooltip="Change the password for this name">
+        <span>Change Password</span>
+        <i class="fa-solid fa-chevron-down profile-accordion-chevron"></i>
+      </button>
+      <div id="passwordAccordionContent" class="profile-accordion-content">
+        <label for="currentPasswordInput">Current password</label>
+        <input type="password" id="currentPasswordInput" class="tool-input" autocomplete="current-password">
+        <label for="newPasswordInput">New password</label>
+        <input type="password" id="newPasswordInput" class="tool-input" autocomplete="new-password">
+        <label for="confirmNewPasswordInput">Confirm new password</label>
+        <input type="password" id="confirmNewPasswordInput" class="tool-input" autocomplete="new-password">
+        <div class="modal-error" id="passwordChangeError"></div>
+        <button type="button" id="changePasswordBtn" data-tooltip="Also updates it for quick-login if this account is saved on this device">Update Password</button>
+      </div>
+    </div>
+
     <button type="button" id="deleteMyAccountBtn" class="danger-action-btn" data-tooltip="Permanently deletes your account, memberships, and roles - can't be undone">Delete My Account</button>
   </div>
 </div>
@@ -830,6 +905,14 @@
         <button type="button" id="sendServerInviteDmBtn" data-tooltip="Send them a clickable join card by DM">Send</button>
       </div>
       <div class="modal-error" id="serverInviteDmError"></div>
+    </div>
+    <div id="clearIntervalSection" hidden>
+      <label for="clearIntervalInput">Auto-clear channels every</label>
+      <div class="modal-row-inline">
+        <input type="text" id="clearIntervalInput" class="tool-input" placeholder="e.g. 1h, 2d, 30m" autocomplete="off">
+        <button type="button" id="saveClearIntervalBtn" data-tooltip="A channel is only swept the next time someone opens it after this much time has passed">Save</button>
+      </div>
+      <div class="modal-error" id="clearIntervalError"></div>
     </div>
     <button type="button" id="pinServerBtn"></button>
     <button type="button" id="leaveOrDeleteServerBtn"></button>
@@ -1035,6 +1118,28 @@
   </div>
 </div>
 
+<div id="formAutomationModal" class="modal-overlay" hidden>
+  <div class="modal-box" style="width:520px;max-height:82vh;overflow-y:auto;">
+    <button type="button" id="closeFormAutomationModalBtn" class="modal-close-x" aria-label="Close" data-tooltip="Close">&times;</button>
+    <h3>Google Form Automation</h3>
+    <p class="sub">
+      Posts a message here whenever someone submits your Google Form - each account can only trigger one post, ever, in this channel.
+      Requires a specific structure: the Form's linked Sheet must be shared as "Anyone with the link - Viewer", and must have a
+      column whose header matches the account-name field below, where the form asks the submitter to type their exact Backbrain
+      display name. Every other column becomes part of the posted message.
+    </p>
+    <div id="formAutomationStatus" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+    <label for="formSheetUrlInput">Google Sheet URL (the Form's linked responses sheet)</label>
+    <input type="text" id="formSheetUrlInput" class="tool-input" placeholder="https://docs.google.com/spreadsheets/d/..." autocomplete="off">
+    <label for="formAccountColumnInput">Account-name column header (exact match)</label>
+    <input type="text" id="formAccountColumnInput" class="tool-input" placeholder="Account Name" autocomplete="off">
+    <div class="modal-error" id="formAutomationError"></div>
+    <button type="button" id="saveFormAutomationBtn">Connect</button>
+    <button type="button" id="disconnectFormAutomationBtn" class="danger-action-btn" hidden>Disconnect</button>
+    <button type="button" id="checkFormNowBtn" data-tooltip="Manually check for new submissions right now, instead of waiting for someone to reopen this channel" hidden>Check for New Submissions Now</button>
+  </div>
+</div>
+
 <div id="lightboxOverlay" class="lightbox-overlay" hidden>
   <img id="lightboxImg">
 </div>
@@ -1219,6 +1324,7 @@
   const addChannelRow = document.getElementById('addChannelRow');
   const newChannelName = document.getElementById('newChannelName');
   const addChannelBtn = document.getElementById('addChannelBtn');
+  const newChannelMinRole = document.getElementById('newChannelMinRole');
   const dmPane = document.getElementById('dmPane');
   const dmThreadList = document.getElementById('dmThreadList');
   const pinnedSection = document.getElementById('pinnedSection');
@@ -1249,6 +1355,16 @@
   const lightboxOverlay = document.getElementById('lightboxOverlay');
   const bansPanelBtn = document.getElementById('bansPanelBtn');
   const clearChannelBtn = document.getElementById('clearChannelBtn');
+  const formAutomationBtn = document.getElementById('formAutomationBtn');
+  const formAutomationModal = document.getElementById('formAutomationModal');
+  const closeFormAutomationModalBtn = document.getElementById('closeFormAutomationModalBtn');
+  const formAutomationStatus = document.getElementById('formAutomationStatus');
+  const formSheetUrlInput = document.getElementById('formSheetUrlInput');
+  const formAccountColumnInput = document.getElementById('formAccountColumnInput');
+  const formAutomationError = document.getElementById('formAutomationError');
+  const saveFormAutomationBtn = document.getElementById('saveFormAutomationBtn');
+  const disconnectFormAutomationBtn = document.getElementById('disconnectFormAutomationBtn');
+  const checkFormNowBtn = document.getElementById('checkFormNowBtn');
   const bansPanelModal = document.getElementById('bansPanelModal');
   const closeBansPanelModalBtn = document.getElementById('closeBansPanelModalBtn');
   const bansPanelList = document.getElementById('bansPanelList');
@@ -1314,8 +1430,16 @@
   const profileColorInput = document.getElementById('profileColorInput');
   const afkEnabledCheckbox = document.getElementById('afkEnabledCheckbox');
   const censorEnabledCheckbox = document.getElementById('censorEnabledCheckbox');
+  const hidePresenceLogsCheckbox = document.getElementById('hidePresenceLogsCheckbox');
   const profileModalError = document.getElementById('profileModalError');
   const saveProfileBtn = document.getElementById('saveProfileBtn');
+  const passwordAccordionToggle = document.getElementById('passwordAccordionToggle');
+  const passwordAccordionContent = document.getElementById('passwordAccordionContent');
+  const currentPasswordInput = document.getElementById('currentPasswordInput');
+  const newPasswordInput = document.getElementById('newPasswordInput');
+  const confirmNewPasswordInput = document.getElementById('confirmNewPasswordInput');
+  const passwordChangeError = document.getElementById('passwordChangeError');
+  const changePasswordBtn = document.getElementById('changePasswordBtn');
   const deleteMyAccountBtn = document.getElementById('deleteMyAccountBtn');
   const closeProfileModalBtn = document.getElementById('closeProfileModalBtn');
 
@@ -1345,6 +1469,10 @@
   const sendServerInviteDmBtn = document.getElementById('sendServerInviteDmBtn');
   const serverInviteDmError = document.getElementById('serverInviteDmError');
   const pinServerBtn = document.getElementById('pinServerBtn');
+  const clearIntervalSection = document.getElementById('clearIntervalSection');
+  const clearIntervalInput = document.getElementById('clearIntervalInput');
+  const saveClearIntervalBtn = document.getElementById('saveClearIntervalBtn');
+  const clearIntervalError = document.getElementById('clearIntervalError');
   const leaveOrDeleteServerBtn = document.getElementById('leaveOrDeleteServerBtn');
   const closeServerInfoModalBtn = document.getElementById('closeServerInfoModalBtn');
 
@@ -1431,13 +1559,16 @@
   let currentRuleProposals = {};
   let typingTimer = null;
   let replyingToId = null;
-  let lastChannelEntries = [];
+  let lastChannelEntries = []; // visible-to-me subset, re-derived from lastRawChannelEntries whenever the channel list OR my own role changes
+  let lastRawChannelEntries = []; // every channel in this server regardless of clearance - the source of truth refreshVisibleChannels() filters from
   const renderedMessageIds = new Set();
   const renderedMessagesData = new Map(); // messageId -> raw message data, for reply-preview lookups
   const profileCache = new Map();
   const profileWatchers = new Set();
   let lastGroupAuthorKey = null;
   let lastGroupAuthorTs = 0;
+  let lastDMGroupAuthorKey = null;
+  let lastDMGroupAuthorTs = 0;
   let onlineKeys = new Set();
   let currentServerMembers = new Set();
   let channelOpenedAt = 0; // guards the reply-chime below from firing for the whole history a limitToLast(200) replays on open, not just genuinely new arrivals
@@ -1484,7 +1615,11 @@
   const BAN_MIN_MS = 5 * 60 * 1000;
   const BAN_MAX_MS = 7 * 24 * 60 * 60 * 1000;
   const PERMANENT_BAN_MS = 100 * 365 * 24 * 60 * 60 * 1000; // ~100 years - a finite "forever" so every existing expiresAt > Date.now() check keeps working unmodified
-  const CLEAR_INTERVAL_MS = 60 * 60 * 1000;
+  // Default when a server hasn't configured its own - preserves the original
+  // fixed hourly behavior for every server that never touches this setting.
+  const DEFAULT_CLEAR_INTERVAL_MS = 60 * 60 * 1000;
+  const CLEAR_INTERVAL_MIN_MS = 10 * 60 * 1000; // floor - stops an accidental "clear every 1 minute"
+  const CLEAR_INTERVAL_MAX_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
   let myRole = null; // null | 'mod' | 'admin' | 'owner'
   let myRoleRef = null;
   let allRoles = new Map(); // key -> 'mod' | 'admin' | 'owner', live, for badges/role lookups on OTHER people
@@ -1583,6 +1718,7 @@
     previousOnlineKeysForPresenceMsgs = newOnlineKeys;
     if (prev === null) return; // don't announce everyone who was already online when this client first connected
     if (currentView !== 'server') return;
+    if (isPresenceLogHidden()) return; // per-viewer preference (Profile > "Hide online/offline notices") - purely a local display choice, nothing is suppressed for anyone else
     newOnlineKeys.forEach(key => {
       if (!prev.has(key) && key !== myKey && currentServerMembers.has(key)) {
         appendSystemMessageRow(null, { kind: 'online', targetKey: key, ts: Date.now() });
@@ -1614,13 +1750,30 @@
     if (profile && profile.deletedTombstone) return 'Deleted User';
     return (profile && profile.displayName) || key;
   }
+  function isTombstoned(profile) { return !!(profile && profile.deletedTombstone); }
 
   function refreshRenderedProfile(key) {
     const profile = profileCache.get(key);
+    // Deleted accounts should just disappear, not sit there labeled "Deleted
+    // User" - if this profile watcher's callback resolves AFTER some of
+    // their messages already rendered (the tombstone is often written by
+    // deleteAccount() well after those rows first appeared), yank the rows
+    // retroactively. appendMessage/appendDMMessage separately skip rendering
+    // any of their messages going forward once the tombstone is cached.
+    if (isTombstoned(profile)) {
+      document.querySelectorAll(`.msg-row[data-author-key="${key}"]`).forEach(el => el.remove());
+    }
     document.querySelectorAll(`[data-author-key="${key}"] .msg-nick`).forEach(el => {
       el.textContent = displayNameFor(key, profile);
     });
-    document.querySelectorAll(`[data-author-key="${key}"] .msg-avatar-slot`).forEach(el => {
+    // :not(.msg-continuation) matters here - a continuation row's avatar
+    // slot is deliberately left empty (it's grouped under the row above),
+    // and this profile watcher's callback can resolve AFTER a continuation
+    // row already rendered (e.g. the very first snapshot on a fresh page
+    // load, racing against several quick consecutive messages). Without
+    // this guard, that delayed callback would blanket-refill every row's
+    // avatar slot for this author, silently undoing the grouping.
+    document.querySelectorAll(`[data-author-key="${key}"]:not(.msg-continuation) .msg-avatar-slot`).forEach(el => {
       el.innerHTML = window.BackbrainIdentity.avatarHtml(profile, 'avatar-circle');
     });
     document.querySelectorAll(`.member-row[data-key="${key}"] .member-name`).forEach(el => {
@@ -2177,7 +2330,7 @@
     currentView = 'dm';
     serverHeaderRow.hidden = true;
     channelList.hidden = true;
-    addChannelRow.hidden = true;
+    updateAddChannelRowVisibility();
     dmPane.hidden = false;
     openPollComposerBtn.hidden = true;
     kickVoteBanner.hidden = true; // listeners guard against re-showing these in DM view (currentView check), but won't re-fire just from this switch, so hide immediately too
@@ -2215,6 +2368,8 @@
     typingIndicator.textContent = '';
     renderedDMIds.clear();
     renderedDMData.clear();
+    lastDMGroupAuthorKey = null;
+    lastDMGroupAuthorTs = 0;
     listenDMMessages(otherKey);
     renderDMThreadList();
     localStorage.setItem('chat_dm_seen_' + otherKey, String(Date.now()));
@@ -2228,7 +2383,7 @@
       currentDMKey = null;
       serverHeaderRow.hidden = false;
       channelList.hidden = false;
-      addChannelRow.hidden = false;
+      updateAddChannelRowVisibility();
       dmPane.hidden = true;
       openPollComposerBtn.hidden = false;
       dmHomeBtn.classList.remove('active');
@@ -2257,46 +2412,60 @@
     renderedDMData.set(id, data);
     ensureProfileWatched(data.authorKey);
     const profile = cachedProfile(data.authorKey);
+    // Deleted accounts just disappear entirely - see the matching comment
+    // in appendMessage(). refreshRenderedProfile() retroactively removes
+    // this row if the tombstone arrives after it already rendered.
+    if (isTombstoned(profile)) return;
     const ts = typeof data.ts === 'number' ? data.ts : Date.now();
     const time = formatMsgTime(ts);
     const blocked = isBlocked(data.authorKey);
 
+    const isGrouped = data.authorKey === lastDMGroupAuthorKey && (ts - lastDMGroupAuthorTs) < GROUP_WINDOW_MS;
     const row = document.createElement('div');
-    row.className = 'msg-row';
+    row.className = 'msg-row' + (isGrouped ? ' msg-continuation' : '');
     row.dataset.authorKey = data.authorKey;
     row.dataset.messageId = id;
-    const contentHtml = data.deleted ? renderDeletedPlaceholder(id, data)
+    const avatarHtml = isGrouped ? '' : window.BackbrainIdentity.avatarHtml(profile, 'avatar-circle');
+    const headerHtml = isGrouped ? '' : `<span class="msg-nick">${escapeHtml(displayNameFor(data.authorKey, profile))}</span>${roleBadgeHtml(data.authorKey)}<span class="msg-time">${time}</span>`;
+    const contentHtml = data.deleted ? renderDeletedPlaceholder(id, data, 'dm')
       : blocked ? renderBlockedPlaceholder(id)
       : data.serverInvite ? renderServerInviteHtml(id, data.serverInvite)
       : renderTextContentHtml(data);
-    const reactionsHtml = (data.deleted || data.serverInvite) ? '' : renderReactionsHtml(data.reactions);
+    const canReact = !data.deleted && !data.serverInvite;
+    const reactionsHtml = canReact ? renderReactionsHtml(data.reactions) : '';
     const canEdit = !data.deleted && canEditMessage(data);
     const canDelete = !data.deleted && canDeleteMessage(data, 'dm');
+    const hoverActionsHtml = (canReact || canEdit || canDelete) ? `<div class="msg-hover-actions">
+        ${canReact ? `<button type="button" class="msg-action-btn msg-reaction-add-btn" data-tooltip="Add a reaction" aria-label="Add a reaction"><i class="fa-solid fa-face-smile"></i></button>` : ''}
+        ${canEdit ? `<button type="button" class="msg-action-btn msg-edit-btn" data-tooltip="Edit" aria-label="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+        ${canDelete ? `<button type="button" class="msg-action-btn msg-delete-btn" data-tooltip="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
+      </div>` : '';
 
     row.innerHTML = `
-      <div class="msg-avatar-slot">${window.BackbrainIdentity.avatarHtml(profile, 'avatar-circle')}</div>
+      <div class="msg-avatar-slot">${avatarHtml}</div>
       <div class="msg-body">
-        <span class="msg-nick">${escapeHtml(displayNameFor(data.authorKey, profile))}</span>${roleBadgeHtml(data.authorKey)}<span class="msg-time">${time}</span>
+        ${headerHtml}
         ${contentHtml}
         ${reactionsHtml}
       </div>
-      ${(canEdit || canDelete) ? `<div class="msg-hover-actions">
-        ${canEdit ? `<button type="button" class="msg-action-btn msg-edit-btn" data-tooltip="Edit" aria-label="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
-        ${canDelete ? `<button type="button" class="msg-action-btn msg-delete-btn" data-tooltip="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
-      </div>` : ''}`;
+      ${hoverActionsHtml ? `<div class="msg-corner-toolbar">${hoverActionsHtml}</div>` : ''}`;
 
     wireLinkChips(row);
     wireAttachments(row);
-    if (data.deleted) wireDeletedPlaceholder(row, id, data);
+    if (data.deleted) wireDeletedPlaceholder(row, id, data, 'dm');
     else if (blocked) wireBlockedPlaceholder(row, id, data);
     else if (data.serverInvite) wireServerInviteButtons(row, data.serverInvite);
     else wireReactionButtons(row, id, 'dm');
     wireMessageActionButtons(row, id, data, 'dm');
-    makeClickableToUserCard(row.querySelector('.msg-nick'), data.authorKey);
-    makeClickableToUserCard(row.querySelector('.msg-avatar-slot'), data.authorKey);
+    if (!isGrouped) {
+      makeClickableToUserCard(row.querySelector('.msg-nick'), data.authorKey);
+      makeClickableToUserCard(row.querySelector('.msg-avatar-slot'), data.authorKey);
+    }
 
     messageList.appendChild(row);
     messageList.scrollTop = messageList.scrollHeight;
+    lastDMGroupAuthorKey = data.authorKey;
+    lastDMGroupAuthorTs = ts;
   }
 
   function updateDMMessageInPlace(id, data) {
@@ -2305,13 +2474,22 @@
     renderedDMData.set(id, data);
     const row = messageList.querySelector(`[data-message-id="${id}"]`);
     if (!row) return;
+    // A restore (undo-delete) landing while this thread is open - simplest
+    // correct way to turn a deleted-placeholder row back into a fully
+    // normal, properly-grouped one is to replay the thread from scratch,
+    // same as opening it fresh. Applies uniformly to whoever clicked Undo
+    // and to anyone else currently viewing this same thread.
+    if (prev && prev.deleted && !data.deleted) {
+      if (currentDMKey) selectDMThread(currentDMKey);
+      return;
+    }
     if (data.deleted && !(prev && prev.deleted)) {
       const body = row.querySelector('.msg-body');
       body.querySelectorAll('.msg-text, .link-chip-row, .msg-attachment-image, .msg-attachment-file, .server-invite-card, .msg-reactions').forEach(el => el.remove());
       const wrap = document.createElement('div');
-      wrap.innerHTML = renderDeletedPlaceholder(id, data);
+      wrap.innerHTML = renderDeletedPlaceholder(id, data, 'dm');
       body.appendChild(wrap.firstChild);
-      wireDeletedPlaceholder(row, id, data);
+      wireDeletedPlaceholder(row, id, data, 'dm');
       row.querySelectorAll('.msg-edit-btn, .msg-delete-btn, .msg-pin-btn').forEach(btn => btn.remove());
       return;
     }
@@ -2509,6 +2687,14 @@
     return isCurrentServerOwner() || isAtLeast('admin');
   }
 
+  // Same tier as announcements - posts messages as other people's accounts
+  // unattended, so it's gated above plain channel creation, but a server's
+  // own owner configuring automation for their own server is exactly the
+  // same trust level this app already grants them for announcements.
+  function canManageFormAutomation() {
+    return isCurrentServerOwner() || isAtLeast('admin');
+  }
+
   // --- Message edit/delete ---
   // Editing is author-only, full stop - no staff override, same as any
   // chat app. Deleting is author-only OR mod+, but ONLY in server channels
@@ -2536,22 +2722,42 @@
   function canViewDeletedContent() {
     return isAtLeast('admin');
   }
+  // Whoever had the authority to delete this message in the first place
+  // (its own author, or mod+ per the same hierarchy canDeleteMessage
+  // already enforces) can also reveal and undo that specific deletion, on
+  // top of admin+'s existing blanket oversight view. Deleting your own
+  // message shouldn't mean losing the ability to see or undo it.
+  function canRestoreMessage(data, context) {
+    return canViewDeletedContent() || canDeleteMessage(data, context);
+  }
 
-  function renderDeletedPlaceholder(id, data) {
-    if (canViewDeletedContent()) {
+  function renderDeletedPlaceholder(id, data, context) {
+    if (canRestoreMessage(data, context)) {
       const deleterName = escapeHtml(displayNameFor(data.deletedBy, cachedProfile(data.deletedBy)));
       return `<button type="button" class="blocked-msg-placeholder" data-reveal-deleted-id="${id}"><i class="fa-solid fa-trash"></i> Deleted by ${deleterName} - click to reveal</button>`;
     }
     return `<div class="blocked-msg-placeholder deleted-msg-plain"><i class="fa-solid fa-trash"></i> Message deleted</div>`;
   }
-  function wireDeletedPlaceholder(container, id, data) {
+  function wireDeletedPlaceholder(container, id, data, context) {
     const btn = container.querySelector(`[data-reveal-deleted-id="${id}"]`);
     if (!btn) return;
     btn.addEventListener('click', () => {
       const real = data.type === 'poll' ? renderPollHtml(id, data) : renderTextContentHtml(data);
-      const deletedTag = `<div class="deleted-tag"><i class="fa-solid fa-trash"></i> Deleted by ${escapeHtml(displayNameFor(data.deletedBy, cachedProfile(data.deletedBy)))}</div>`;
+      const deletedTag = `<div class="deleted-tag"><i class="fa-solid fa-trash"></i> Deleted by ${escapeHtml(displayNameFor(data.deletedBy, cachedProfile(data.deletedBy)))}${canRestoreMessage(data, context) ? ` <button type="button" class="undo-delete-btn" data-tooltip="Restore this message">Undo</button>` : ''}</div>`;
       btn.outerHTML = deletedTag + real;
+      const undoBtn = container.querySelector('.undo-delete-btn');
+      if (undoBtn) undoBtn.addEventListener('click', () => restoreMessage(id, data, context));
     }, { once: true });
+  }
+
+  async function restoreMessage(id, data, context) {
+    if (!canRestoreMessage(data, context)) return;
+    await messageRefFor(id, context).update({ deleted: null, deletedBy: null, deletedAt: null });
+    // No local re-render here - the update-in-place listener below (which
+    // this client is subscribed to same as everyone else viewing this
+    // channel/thread) picks up the resulting child_changed event and
+    // reloads the view for every viewer uniformly, actor included.
+    showToast('Message restored');
   }
 
   function messageRefFor(id, context) {
@@ -2610,6 +2816,20 @@
     if (deleteBtn) deleteBtn.addEventListener('click', () => deleteMessage(id, data, context));
     const pinBtn = row.querySelector('.msg-pin-btn');
     if (pinBtn && context === 'server') pinBtn.addEventListener('click', () => togglePinMessage(id));
+    // Lives in the corner toolbar (with reply/edit/delete/pin) rather than
+    // inside .msg-reactions itself - toggles that sibling element's
+    // expanded picker on click.
+    const reactionAddBtn = row.querySelector('.msg-reaction-add-btn');
+    if (reactionAddBtn) {
+      reactionAddBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const reactionsEl = row.querySelector('.msg-reactions');
+        if (!reactionsEl) return;
+        const wasExpanded = reactionsEl.classList.contains('expanded');
+        closeAllReactionPickers();
+        if (!wasExpanded) reactionsEl.classList.add('expanded');
+      });
+    }
   }
 
   // The edit/delete/pin bar and reactions only reveal via CSS :hover, which
@@ -2635,7 +2855,36 @@
   function renderModerationUI() {
     bansPanelBtn.hidden = !isAtLeast('mod');
     clearChannelBtn.hidden = !isAtLeast('mod');
+    formAutomationBtn.hidden = !canManageFormAutomation();
     allUsersBtn.hidden = !isAtLeast('admin'); // deliberately admin+ only, not mod - see openAllUsersModal
+    updateAddChannelRowVisibility();
+    populateNewChannelMinRoleOptions();
+    refreshVisibleChannels();
+  }
+
+  // Only mod+ can create channels at all, and only admin+ can delete them -
+  // channels aren't a casual per-member thing here, they're structure staff
+  // sets up. Kept separate from the view-based show/hide in
+  // switchToServer/showDMPane so a role change alone (no view change) still
+  // updates this immediately.
+  function updateAddChannelRowVisibility() {
+    addChannelRow.hidden = currentView !== 'server' || !isAtLeast('mod');
+  }
+
+  // The "visible to" tier a new channel can be created at is capped to your
+  // own current role - creating a channel above your own clearance would
+  // make it immediately invisible to you (including the channel you just
+  // made), which is never useful and only ever confusing.
+  function populateNewChannelMinRoleOptions() {
+    const tiers = [
+      { value: '', label: 'Everyone' },
+      { value: 'mod', label: 'Mod+ (staff)' },
+      { value: 'admin', label: 'Admin+' },
+      { value: 'owner', label: 'Owner only' },
+    ].filter(t => !t.value || isAtLeast(t.value));
+    const prev = newChannelMinRole.value;
+    newChannelMinRole.innerHTML = tiers.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+    if (tiers.some(t => t.value === prev)) newChannelMinRole.value = prev;
   }
 
   // --- Staff right-click context menu ---
@@ -2834,7 +3083,13 @@
   async function openAllUsersModal() {
     if (!isAtLeast('admin')) return;
     const val = (await db.ref('profiles').once('value')).val() || {};
-    const entries = Object.entries(val).map(([key, profile]) => ({ key, profile: profile || {} }));
+    // Deleted accounts disappear entirely rather than cluttering this list
+    // as "Deleted User" rows - a tombstone has no displayName/avatar/
+    // lastSeenAt to show anyway, so there's nothing useful to audit here,
+    // just a name held on a reclaim cooldown (see chat-identity.js).
+    const entries = Object.entries(val)
+      .map(([key, profile]) => ({ key, profile: profile || {} }))
+      .filter(({ profile }) => !isTombstoned(profile));
     // Online-now first, then most-recently-seen first - serves the
     // moderation use case ("who's been inactive") better than alphabetical.
     entries.sort((a, b) => {
@@ -3138,20 +3393,42 @@
   // archive first, rather than just deleting outright - see the
   // catastrophic-data-loss incident earlier this session that motivated
   // this: a real backup, not just a bigger confirm() dialog.
+  //
+  // Checked here (not just at each caller) so this is the one authoritative
+  // guard regardless of which path triggers a clear: a channel marked
+  // noClear is skipped entirely, and pinned messages are always excluded
+  // from both the archive-and-remove sweep and the pinned-messages ledger
+  // is left untouched - pinning something is a deliberate "keep this"
+  // signal, so a clear (automatic or manual) shouldn't be able to erase it.
+  // Returns false if nothing happened because the channel is protected.
   async function performClear(serverId, channelId) {
-    const messagesSnap = await db.ref('servers/' + serverId + '/channels/' + channelId + '/messages').once('value');
+    const channelRef = db.ref('servers/' + serverId + '/channels/' + channelId);
+    const noClear = (await channelRef.child('noClear').once('value')).val();
+    if (noClear) return false;
+    const [messagesSnap, pinnedSnap, nameSnap] = await Promise.all([
+      channelRef.child('messages').once('value'),
+      channelRef.child('pinnedMessages').once('value'),
+      channelRef.child('name').once('value'),
+    ]);
     const messages = messagesSnap.val();
-    if (messages && Object.keys(messages).length) {
-      const nameSnap = await db.ref('servers/' + serverId + '/channels/' + channelId + '/name').once('value');
-      await db.ref('archives').push({
-        serverId, channelId,
-        channelName: nameSnap.val() || 'unnamed',
-        messages,
-        archivedAt: Date.now(),
-        expiresAt: Date.now() + ARCHIVE_TTL_MS,
-      });
+    const pinnedIds = new Set(Object.keys(pinnedSnap.val() || {}));
+    if (messages) {
+      const toClear = {};
+      Object.entries(messages).forEach(([id, m]) => { if (!pinnedIds.has(id)) toClear[id] = m; });
+      if (Object.keys(toClear).length) {
+        await db.ref('archives').push({
+          serverId, channelId,
+          channelName: nameSnap.val() || 'unnamed',
+          messages: toClear,
+          archivedAt: Date.now(),
+          expiresAt: Date.now() + ARCHIVE_TTL_MS,
+        });
+        const removals = {};
+        Object.keys(toClear).forEach(id => { removals[id] = null; });
+        await channelRef.child('messages').update(removals);
+      }
     }
-    await db.ref('servers/' + serverId + '/channels/' + channelId + '/messages').remove();
+    return true;
   }
 
   // Best-effort, client-triggered - same honest limitation as the hourly
@@ -3166,12 +3443,42 @@
     await Promise.all(expired.map(id => db.ref('archives/' + id).remove()));
   }
 
+  // Accepts the same compact unit strings the ban dialog uses (e.g. "30m",
+  // "1h", "2d", "1w"), bounded to something sane rather than a ban's own
+  // 5min-1week window (a channel-clear cadence has different reasonable
+  // limits than a ban duration).
+  function parseClearInterval(str) {
+    const s = String(str || '').trim().toLowerCase();
+    const bareMinutes = /^(\d+)$/.exec(s);
+    const m = bareMinutes || /^(\d+)(m|h|d|w)$/i.exec(s);
+    if (!m) return null;
+    const unitMs = bareMinutes ? 60000 : { m: 60000, h: 3600000, d: 86400000, w: 604800000 }[m[2].toLowerCase()];
+    const ms = parseInt(m[1], 10) * unitMs;
+    if (ms < CLEAR_INTERVAL_MIN_MS || ms > CLEAR_INTERVAL_MAX_MS) return null;
+    return ms;
+  }
+
+  function formatClearIntervalCompact(ms) {
+    const units = [['w', 604800000], ['d', 86400000], ['h', 3600000], ['m', 60000]];
+    for (const [suffix, unitMs] of units) {
+      if (ms % unitMs === 0) return (ms / unitMs) + suffix;
+    }
+    return Math.round(ms / 60000) + 'm';
+  }
+
   // Transaction-guarded so multiple simultaneous viewers of the same channel
   // don't all fire the sweep independently - only whichever client's
-  // transaction actually commits (moves lastClearedAt more than an hour
+  // transaction actually commits (moves lastClearedAt more than an interval
   // forward) performs the real clear. Honest limitation: a channel nobody
   // opens just doesn't get swept until someone next visits it.
   async function maybeAutoClearChannel(serverId, channelId) {
+    // Cheap early-out before even touching lastClearedAt - performClear()
+    // itself is still the authoritative check, this just skips a pointless
+    // transaction write every time a permanently-protected channel is opened.
+    const noClear = (await db.ref('servers/' + serverId + '/channels/' + channelId + '/noClear').once('value')).val();
+    if (noClear) return;
+    const intervalSnap = await db.ref('servers/' + serverId + '/clearIntervalMs').once('value');
+    const intervalMs = intervalSnap.val() || DEFAULT_CLEAR_INTERVAL_MS;
     const ref = db.ref('servers/' + serverId + '/channels/' + channelId + '/lastClearedAt');
     const now = Date.now();
     let shouldClear = false;
@@ -3181,13 +3488,114 @@
       // "overdue" was a real bug: it destructively wiped every existing
       // channel's full history the first time anyone opened it after this
       // feature shipped. Only clear once a real, previously-set baseline is
-      // more than an hour old.
+      // more than one configured interval old.
       if (current === null) return now;
-      if (now - current < CLEAR_INTERVAL_MS) return; // not due yet - abort
+      if (now - current < intervalMs) return; // not due yet - abort
       shouldClear = true;
       return now;
     });
     if (result.committed && shouldClear) await performClear(serverId, channelId);
+  }
+
+  // --- Google Form automation ---
+  // No backend exists to receive Form submissions directly, so this reads
+  // the Form's own linked Google Sheet instead, via the "gviz" JSON endpoint
+  // countless no-backend Sheet integrations already rely on - it works for
+  // any Sheet shared as "Anyone with the link - Viewer", no API key/OAuth
+  // needed since Google treats it as a public resource at that point. The
+  // required structure: the sheet must have a column whose header exactly
+  // matches config.accountColumn, where the submitter typed their exact
+  // Backbrain display name - that's the only way to connect a Form answer
+  // to an actual chat account, since Forms has no idea who's logged in
+  // here. Every other column becomes the posted message's body.
+  function extractSheetId(urlOrId) {
+    const trimmed = String(urlOrId || '').trim();
+    const m = /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/.exec(trimmed);
+    if (m) return m[1];
+    if (/^[a-zA-Z0-9-_]{20,}$/.test(trimmed)) return trimmed; // looks like a bare sheet ID already
+    return null;
+  }
+
+  function parseGvizResponse(text) {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('Unexpected response from Google Sheets - is the sheet really shared as "Anyone with the link"?');
+    const json = JSON.parse(text.slice(start, end + 1));
+    if (json.status === 'error') throw new Error('Google Sheets rejected this request - check the sheet is shared as "Anyone with the link - Viewer".');
+    const cols = (json.table.cols || []).map(c => c.label || '');
+    return (json.table.rows || []).map(r => {
+      const obj = {};
+      (r.c || []).forEach((cell, i) => {
+        if (cols[i]) obj[cols[i]] = cell ? (cell.f !== undefined && cell.f !== null ? cell.f : (cell.v !== undefined && cell.v !== null ? cell.v : '')) : '';
+      });
+      return obj;
+    });
+  }
+
+  async function fetchGoogleSheetRows(sheetId) {
+    const res = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`);
+    if (!res.ok) throw new Error(`Could not reach that Google Sheet (HTTP ${res.status}).`);
+    return parseGvizResponse(await res.text());
+  }
+
+  function formatFormSubmissionText(row, accountColumn) {
+    const lines = Object.entries(row)
+      .filter(([col, val]) => col !== accountColumn && col.toLowerCase() !== 'timestamp' && String(val || '').trim())
+      .map(([col, val]) => `${col}: ${val}`);
+    return lines.length ? lines.join('\n') : '(no other answers)';
+  }
+
+  // Separated from the network fetch so the account-resolution/dedup/
+  // posting logic can be exercised directly against fabricated rows without
+  // needing a real reachable Google Sheet.
+  async function processGoogleFormRows(serverId, channelId, rows, config, startIndex) {
+    let posted = 0, skippedNoAccount = 0, skippedAlreadyPosted = 0;
+    for (let i = startIndex; i < rows.length; i++) {
+      const rawName = rows[i][config.accountColumn];
+      const key = rawName ? window.BackbrainIdentity.sanitizeUsernameKey(window.BackbrainIdentity.normalizeUsername(rawName)) : '';
+      const profile = key ? await window.BackbrainIdentity.get(key) : null;
+      if (!key || !profile || profile.deletedTombstone) { skippedNoAccount++; continue; }
+      const postedRef = db.ref('servers/' + serverId + '/channels/' + channelId + '/googleFormPosted/' + key);
+      if ((await postedRef.once('value')).exists()) { skippedAlreadyPosted++; continue; }
+      await postedRef.set(true);
+      await db.ref('servers/' + serverId + '/channels/' + channelId + '/messages').push({
+        authorKey: key,
+        text: `\u{1F4CB} Form submission:\n${formatFormSubmissionText(rows[i], config.accountColumn)}`,
+        ts: firebase.database.ServerValue.TIMESTAMP,
+        type: 'text',
+      });
+      posted++;
+    }
+    return { posted, skippedNoAccount, skippedAlreadyPosted };
+  }
+
+  // Best-effort, client-triggered - same honest limitation as auto-clear
+  // above (no backend cron to run this on a schedule; a channel nobody
+  // opens just doesn't get checked). Transaction-guarded on
+  // googleFormLastRow so multiple simultaneous viewers opening this channel
+  // don't both claim (and try to post) the same new rows. Known, accepted
+  // edge case: if posting fails partway through a batch (e.g. a dropped
+  // network request), googleFormLastRow has already advanced past those
+  // rows, so a failed row is skipped rather than retried - the same
+  // best-effort tradeoff the rest of this feature set already makes.
+  async function checkGoogleFormForNewSubmissions(serverId, channelId) {
+    const config = (await db.ref('servers/' + serverId + '/channels/' + channelId + '/googleForm').once('value')).val();
+    if (!config) return null;
+    let rows;
+    try {
+      rows = await fetchGoogleSheetRows(config.sheetId);
+    } catch (err) {
+      return { error: err.message };
+    }
+    const lastRowRef = db.ref('servers/' + serverId + '/channels/' + channelId + '/googleFormLastRow');
+    let startIndex = null;
+    const result = await lastRowRef.transaction(current => {
+      startIndex = current || 0;
+      if (rows.length <= startIndex) return; // nothing new - abort, no write
+      return rows.length;
+    });
+    if (!result.committed || startIndex === null) return { posted: 0, skippedNoAccount: 0, skippedAlreadyPosted: 0 };
+    return await processGoogleFormRows(serverId, channelId, rows, config, startIndex);
   }
 
   // --- Slash commands ---
@@ -3240,7 +3648,22 @@
     if (!profile) { appendLocalNotice('No account with that name.'); return; }
     const now = Date.now();
     const expiresAt = now + durationMs;
-    await db.ref('bans/' + targetKey).set({ reason, bannedBy: myKey, bannedAt: now, expiresAt });
+    // fingerprint/ipHash are captured here and travel WITH the ban record,
+    // rather than /unban re-deriving them from whatever the account's
+    // profile looks like later. A real incident: an account got banned,
+    // then deleted (which wipes lastFingerprint/lastIpHash down to just a
+    // tombstone) before /unban ran - unban found no fingerprint/IP on the
+    // now-tombstoned profile to clean up, so bannedFingerprints/bannedIPs
+    // were silently orphaned for as long as the original ban's duration,
+    // locking out that device/network with no ban left in the active-bans
+    // list to explain why. Storing the hashes on the ban itself means
+    // unban always has what it needs regardless of what happens to the
+    // account afterward.
+    await db.ref('bans/' + targetKey).set({
+      reason, bannedBy: myKey, bannedAt: now, expiresAt,
+      fingerprint: profile.lastFingerprint || null,
+      ipHash: profile.lastIpHash || null,
+    });
     if (profile.lastFingerprint) await db.ref('bannedFingerprints/' + profile.lastFingerprint).set({ bannedAt: now, expiresAt });
     if (profile.lastIpHash) await db.ref('bannedIPs/' + profile.lastIpHash).set({ bannedAt: now, expiresAt });
     await db.ref('onlineUsers/' + targetKey).remove();
@@ -3253,17 +3676,25 @@
     if (!args.length) { appendLocalNotice('Usage: /unban @user'); return; }
     const targetKey = resolveKeyFromArg(args[0]);
     const profile = await window.BackbrainIdentity.get(targetKey);
+    // Read the ban record's OWN saved fingerprint/ipHash (see handleBanCommand)
+    // rather than the account's current profile - the account may have been
+    // deleted (or renamed via delete+recreate) since it was banned, and a
+    // tombstoned profile has neither field anymore.
+    const ban = await db.ref('bans/' + targetKey).once('value').then(s => s.val());
     await db.ref('bans/' + targetKey).remove();
-    if (profile && profile.lastFingerprint) await db.ref('bannedFingerprints/' + profile.lastFingerprint).remove();
-    if (profile && profile.lastIpHash) await db.ref('bannedIPs/' + profile.lastIpHash).remove();
+    const fingerprint = (ban && ban.fingerprint) || (profile && profile.lastFingerprint);
+    const ipHash = (ban && ban.ipHash) || (profile && profile.lastIpHash);
+    if (fingerprint) await db.ref('bannedFingerprints/' + fingerprint).remove();
+    if (ipHash) await db.ref('bannedIPs/' + ipHash).remove();
     appendLocalNotice('Unbanned ' + escapeHtml(displayNameFor(targetKey, profile)) + '.');
   }
 
   async function handleClearCommand() {
     if (!isAtLeast('mod')) { appendLocalNotice('You need to be a mod or higher to use this.'); return; }
     if (!currentChannelId || currentView !== 'server') return;
-    if (!confirm('Clear all messages in this channel? This cannot be undone.')) return;
-    await performClear(currentServerId, currentChannelId);
+    if (!confirm('Clear all messages in this channel? Pinned messages are kept. This cannot be undone.')) return;
+    const cleared = await performClear(currentServerId, currentChannelId);
+    if (!cleared) { showToast('This channel is protected from being cleared.', true); return; }
     showToast('Channel cleared');
   }
 
@@ -3588,13 +4019,22 @@
     });
   }
 
+  // Same override every other server-management action already gets (see
+  // deleteServerId's own server.ownerKey/isAtLeast('owner') check) - the
+  // site's global Owner outranks every individual server's own creator, so
+  // they shouldn't be locked out of a server's rules just because they
+  // didn't personally create it.
+  function canManageRulesDirectly() {
+    return isCurrentServerOwner() || isAtLeast('owner');
+  }
+
   function updateRulesProposalDot() {
-    rulesProposalDot.hidden = !(isCurrentServerOwner() && Object.keys(currentRuleProposals).length > 0);
+    rulesProposalDot.hidden = !(canManageRulesDirectly() && Object.keys(currentRuleProposals).length > 0);
   }
 
   function renderRulesModal() {
     rulesModalError.textContent = '';
-    const owner = isCurrentServerOwner();
+    const owner = canManageRulesDirectly();
     const canPropose = !owner && isAtLeast('admin');
     rulesViewText.textContent = (currentRules && currentRules.text) ? currentRules.text : 'No rules set yet.';
     rulesSubText.textContent = owner
@@ -3623,7 +4063,7 @@
       </div>`).join('');
     rulesProposalsList.querySelectorAll('.approve-proposal-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!isCurrentServerOwner()) return;
+        if (!canManageRulesDirectly()) return;
         const id = btn.dataset.id;
         const proposal = currentRuleProposals[id];
         if (!proposal) return;
@@ -3634,7 +4074,7 @@
     });
     rulesProposalsList.querySelectorAll('.reject-proposal-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!isCurrentServerOwner()) return;
+        if (!canManageRulesDirectly()) return;
         await serverRoot().child('ruleProposals').child(btn.dataset.id).remove();
         showToast('Proposal rejected');
       });
@@ -3647,13 +4087,13 @@
   });
   closeRulesModalBtn.addEventListener('click', () => { rulesModal.hidden = true; });
   saveRulesBtn.addEventListener('click', async () => {
-    if (!isCurrentServerOwner()) { rulesModalError.textContent = "Only this server's owner can save rules directly."; return; }
+    if (!canManageRulesDirectly()) { rulesModalError.textContent = "Only this server's owner (or the site Owner) can save rules directly."; return; }
     const text = rulesEditInput.value.trim();
     await serverRoot().child('rules').set({ text, updatedAt: Date.now(), updatedBy: myKey });
     showToast('Rules saved');
   });
   submitRuleProposalBtn.addEventListener('click', async () => {
-    if (isCurrentServerOwner() || !isAtLeast('admin')) { rulesModalError.textContent = 'Only admins can propose rule changes.'; return; }
+    if (canManageRulesDirectly() || !isAtLeast('admin')) { rulesModalError.textContent = 'Only admins can propose rule changes.'; return; }
     const text = rulesProposeInput.value.trim();
     if (!text) { rulesModalError.textContent = 'Write something first.'; return; }
     await serverRoot().child('ruleProposals').push({ text, proposedBy: myKey, proposedAt: Date.now() });
@@ -3662,6 +4102,24 @@
   });
 
   // --- Channels (scoped to the current server) ---
+  // Split from listenChannels() so a role change (promotion, demotion, or a
+  // fresh login) can re-derive which channels are visible without waiting
+  // for the channel DATA itself to change - Firebase's on('value') listener
+  // only re-fires on the latter, so without this a demoted member would go
+  // on seeing a restricted channel (or a promoted one would stay blind to
+  // one) until something else happened to touch that server's channels.
+  function refreshVisibleChannels() {
+    if (currentView !== 'server' || !currentServerId) return;
+    const entries = lastRawChannelEntries
+      .filter(e => !e.minRole || isAtLeast(e.minRole)) // channels above your own clearance don't even show up as existing
+      .sort((a, b) => a.name.localeCompare(b.name));
+    lastChannelEntries = entries;
+    renderChannelList(entries);
+    if (entries.length && (!currentChannelId || !entries.some(e => e.id === currentChannelId))) {
+      selectChannel(entries[0].id, entries[0].name);
+    }
+  }
+
   function listenChannels() {
     channelsRef = serverRoot().child('channels');
     channelsRef.on('value', async (snap) => {
@@ -3679,18 +4137,15 @@
         createChannel('general', { protected: true });
         return;
       }
-      const entries = ids.map(id => ({
+      lastRawChannelEntries = ids.map(id => ({
         id,
         name: (val[id] && val[id].name) || 'unnamed',
         createdBy: val[id] && val[id].createdBy,
         protected: !!(val[id] && val[id].protected),
+        minRole: (val[id] && val[id].minRole) || null,
+        noClear: !!(val[id] && val[id].noClear),
       }));
-      entries.sort((a, b) => a.name.localeCompare(b.name));
-      lastChannelEntries = entries;
-      renderChannelList(entries);
-      if (!currentChannelId || !entries.some(e => e.id === currentChannelId)) {
-        selectChannel(entries[0].id, entries[0].name);
-      }
+      refreshVisibleChannels();
     });
   }
 
@@ -3698,17 +4153,21 @@
     const ref = serverRoot().child('channels').push();
     const data = { name, createdAt: firebase.database.ServerValue.TIMESTAMP, createdBy: myKey };
     if (options && options.protected) data.protected = true;
+    if (options && options.minRole) data.minRole = options.minRole;
     await ref.set(data);
   }
 
   function deleteChannel(channelId) {
+    if (!isAtLeast('admin')) { showToast('Only an admin or higher can delete channels.', true); return; }
     const entry = lastChannelEntries.find(e => e.id === channelId);
     if (!entry) return;
     if (entry.protected) { showToast("The general channel can't be deleted.", true); return; }
-    if (entry.createdBy !== myKey) { showToast("Only this channel's creator can delete it.", true); return; }
     if (!confirm('Delete this channel and all its messages?')) return;
     serverRoot().child('channels').child(channelId).remove();
   }
+
+  const CHANNEL_CLEARANCE_LABELS = { mod: 'Mod+', admin: 'Admin+', owner: 'Owner only' };
+  const CHANNEL_CLEARANCE_ICONS = { mod: 'fa-wrench', admin: 'fa-shield-halved', owner: 'fa-crown' };
 
   function renderChannelList(entries) {
     const sorted = [...entries].sort((a, b) => {
@@ -3716,14 +4175,22 @@
       if (aPinned !== bPinned) return aPinned ? -1 : 1;
       return a.name.localeCompare(b.name);
     });
+    const canToggleNoClear = isAtLeast('mod'); // same tier as clearing at all
     channelList.innerHTML = sorted.map(e => {
-      const canDelete = !e.protected && e.createdBy === myKey;
+      const canDelete = !e.protected && isAtLeast('admin');
       const pinned = isChannelPinned(e.id);
+      const clearanceIcon = e.minRole
+        ? `<i class="fa-solid ${CHANNEL_CLEARANCE_ICONS[e.minRole]} channel-clearance-icon" data-tooltip="Restricted - ${CHANNEL_CLEARANCE_LABELS[e.minRole]} clearance required to see this channel"></i> `
+        : '';
+      const noClearIcon = e.noClear
+        ? `<i class="fa-solid fa-shield-halved channel-clearance-icon" data-tooltip="Protected - never auto/manually cleared"></i> `
+        : '';
       return `
       <div class="channel-row ${e.id === currentChannelId ? 'active' : ''}" data-id="${e.id}">
-        <span class="channel-name">${pinned ? '<i class="fa-solid fa-thumbtack channel-pin-icon" data-tooltip="Pinned"></i> ' : ''}<i class="fa-solid fa-hashtag" style="font-size:11px;"></i> ${escapeHtml(e.name)}</span>
+        <span class="channel-name">${pinned ? '<i class="fa-solid fa-thumbtack channel-pin-icon" data-tooltip="Pinned"></i> ' : ''}${noClearIcon}${clearanceIcon}<i class="fa-solid fa-hashtag" style="font-size:11px;"></i> ${escapeHtml(e.name)}</span>
+        ${canToggleNoClear ? `<button class="channel-noclear-toggle ${e.noClear ? 'active' : ''}" data-id="${e.id}" data-tooltip="${e.noClear ? 'Protected from clearing - click to allow clearing again' : 'Protect this channel from ever being cleared (manual or automatic)'}" aria-label="Toggle clear protection"><i class="fa-solid fa-shield-halved"></i></button>` : ''}
         <button class="channel-pin-toggle" data-id="${e.id}" data-tooltip="${pinned ? 'Unpin channel' : 'Pin channel'}" aria-label="${pinned ? 'Unpin channel' : 'Pin channel'}"><i class="fa-solid fa-thumbtack"></i></button>
-        ${canDelete ? `<button class="del-channel" data-id="${e.id}" data-tooltip="Delete channel (creator only)" aria-label="Delete channel">&times;</button>` : ''}
+        ${canDelete ? `<button class="del-channel" data-id="${e.id}" data-tooltip="Delete channel (admin+)" aria-label="Delete channel">&times;</button>` : ''}
       </div>
     `;
     }).join('');
@@ -3740,6 +4207,17 @@
     channelList.querySelectorAll('.channel-pin-toggle').forEach(el => {
       el.addEventListener('click', (ev) => { ev.stopPropagation(); toggleChannelPin(el.dataset.id); });
     });
+    channelList.querySelectorAll('.channel-noclear-toggle').forEach(el => {
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); toggleChannelNoClear(el.dataset.id); });
+    });
+  }
+
+  async function toggleChannelNoClear(channelId) {
+    if (!isAtLeast('mod')) return;
+    const entry = lastRawChannelEntries.find(e => e.id === channelId);
+    if (!entry) return;
+    await serverRoot().child('channels').child(channelId).child('noClear').set(!entry.noClear);
+    showToast(entry.noClear ? 'Clearing re-enabled for this channel' : 'Channel protected from clearing');
   }
 
   function selectChannel(channelId, name) {
@@ -3762,6 +4240,8 @@
     listenTyping(channelId);
     listenPinnedMessageIds(channelId);
     maybeAutoClearChannel(currentServerId, channelId);
+    checkGoogleFormForNewSubmissions(currentServerId, channelId); // no-op if this channel isn't connected to a form
+    formAutomationBtn.hidden = !canManageFormAutomation(); // re-evaluate here too - this is per-server, not just per-role, so a server switch alone needs it refreshed
     renderChannelList(lastChannelEntries);
   }
 
@@ -3807,6 +4287,11 @@
 
     ensureProfileWatched(data.authorKey);
     const profile = cachedProfile(data.authorKey);
+    // Deleted accounts just disappear entirely rather than showing as
+    // "Deleted User" - if the tombstone hasn't been cached yet, this render
+    // proceeds normally for now and refreshRenderedProfile() retroactively
+    // removes the row once the profile watcher's callback catches up.
+    if (isTombstoned(profile)) return;
     const ts = typeof data.ts === 'number' ? data.ts : Date.now();
     const time = formatMsgTime(ts);
     const blocked = isBlocked(data.authorKey);
@@ -3836,14 +4321,23 @@
     const avatarHtml = isGrouped ? '' : window.BackbrainIdentity.avatarHtml(profile, 'avatar-circle');
     const headerHtml = isGrouped ? '' : `<span class="msg-nick">${escapeHtml(displayNameFor(data.authorKey, profile))}</span>${roleBadgeHtml(data.authorKey)}<span class="msg-time">${time}</span>`;
     const replyHtml = data.replyToMessageId ? renderReplyPreviewHtml(data.replyToMessageId) : '';
-    const contentHtml = data.deleted ? renderDeletedPlaceholder(id, data)
+    const contentHtml = data.deleted ? renderDeletedPlaceholder(id, data, 'server')
       : blocked ? renderBlockedPlaceholder(id)
       : (data.type === 'poll' ? renderPollHtml(id, data) : renderTextContentHtml(data));
-    const reactionsHtml = data.deleted ? '' : renderReactionsHtml(data.reactions);
+    const canReact = !data.deleted;
+    const reactionsHtml = canReact ? renderReactionsHtml(data.reactions) : '';
     const canEdit = !data.deleted && data.type !== 'poll' && canEditMessage(data);
     const canDelete = !data.deleted && canDeleteMessage(data, 'server');
     const canPin = !data.deleted && isAtLeast('mod');
     const pinned = isMessagePinned(id);
+
+    const hoverActionsHtml = `<div class="msg-hover-actions">
+        <button type="button" class="msg-action-btn msg-reply-btn" data-tooltip="Reply" aria-label="Reply"><i class="fa-solid fa-reply"></i></button>
+        ${canReact ? `<button type="button" class="msg-action-btn msg-reaction-add-btn" data-tooltip="Add a reaction" aria-label="Add a reaction"><i class="fa-solid fa-face-smile"></i></button>` : ''}
+        ${canPin ? `<button type="button" class="msg-action-btn msg-pin-btn ${pinned ? 'active' : ''}" data-tooltip="${pinned ? 'Unpin message' : 'Pin message'}" aria-label="Pin message"><i class="fa-solid fa-thumbtack"></i></button>` : ''}
+        ${canEdit ? `<button type="button" class="msg-action-btn msg-edit-btn" data-tooltip="Edit" aria-label="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
+        ${canDelete ? `<button type="button" class="msg-action-btn msg-delete-btn" data-tooltip="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
+      </div>`;
 
     row.innerHTML = `
       <div class="msg-avatar-slot">${avatarHtml}</div>
@@ -3853,18 +4347,13 @@
         ${contentHtml}
         ${reactionsHtml}
       </div>
-      <div class="msg-hover-actions">
-        <button type="button" class="msg-action-btn msg-reply-btn" data-tooltip="Reply" aria-label="Reply"><i class="fa-solid fa-reply"></i></button>
-        ${canPin ? `<button type="button" class="msg-action-btn msg-pin-btn ${pinned ? 'active' : ''}" data-tooltip="${pinned ? 'Unpin message' : 'Pin message'}" aria-label="Pin message"><i class="fa-solid fa-thumbtack"></i></button>` : ''}
-        ${canEdit ? `<button type="button" class="msg-action-btn msg-edit-btn" data-tooltip="Edit" aria-label="Edit"><i class="fa-solid fa-pen"></i></button>` : ''}
-        ${canDelete ? `<button type="button" class="msg-action-btn msg-delete-btn" data-tooltip="Delete" aria-label="Delete"><i class="fa-solid fa-trash"></i></button>` : ''}
-      </div>`;
+      <div class="msg-corner-toolbar">${hoverActionsHtml}</div>`;
 
     wireReplyButton(row, id);
     wireReactionButtons(row, id, 'server');
     wireLinkChips(row);
     wireAttachments(row);
-    if (data.deleted) wireDeletedPlaceholder(row, id, data);
+    if (data.deleted) wireDeletedPlaceholder(row, id, data, 'server');
     else if (blocked) wireBlockedPlaceholder(row, id, data);
     if (data.type === 'poll') wirePollButtons(row, id, data.authorKey);
     wireMessageActionButtons(row, id, data, 'server');
@@ -3885,13 +4374,21 @@
     renderedMessagesData.set(id, data);
     const row = messageList.querySelector(`[data-message-id="${id}"]`);
     if (!row) return;
+    // A restore (undo-delete) landing while this channel is open - see the
+    // matching comment in updateDMMessageInPlace for why a full replay is
+    // the simplest correct fix, and why this covers both whoever clicked
+    // Undo and anyone else currently viewing this same channel.
+    if (prev && prev.deleted && !data.deleted) {
+      if (currentChannelId) selectChannel(currentChannelId, channelHeaderName.textContent);
+      return;
+    }
     if (data.deleted && !(prev && prev.deleted)) {
       const body = row.querySelector('.msg-body');
       body.querySelectorAll('.msg-text, .link-chip-row, .poll-card, .msg-attachment-image, .msg-attachment-file, .msg-reactions').forEach(el => el.remove());
       const wrap = document.createElement('div');
-      wrap.innerHTML = renderDeletedPlaceholder(id, data);
+      wrap.innerHTML = renderDeletedPlaceholder(id, data, 'server');
       body.appendChild(wrap.firstChild);
-      wireDeletedPlaceholder(row, id, data);
+      wireDeletedPlaceholder(row, id, data, 'server');
       row.querySelectorAll('.msg-edit-btn, .msg-delete-btn, .msg-pin-btn').forEach(btn => btn.remove());
       return;
     }
@@ -4018,6 +4515,69 @@
   closeBansPanelModalBtn.addEventListener('click', () => { bansPanelModal.hidden = true; });
   clearChannelBtn.addEventListener('click', handleClearCommand);
 
+  async function openFormAutomationModal() {
+    formAutomationError.textContent = '';
+    const config = (await db.ref('servers/' + currentServerId + '/channels/' + currentChannelId + '/googleForm').once('value')).val();
+    if (config) {
+      formAutomationStatus.textContent = `Connected - posting to #${channelHeaderName.textContent} whenever this channel is opened and new submissions are found.`;
+      formSheetUrlInput.value = config.sheetUrl || config.sheetId;
+      formAccountColumnInput.value = config.accountColumn;
+      disconnectFormAutomationBtn.hidden = false;
+      checkFormNowBtn.hidden = false;
+    } else {
+      formAutomationStatus.textContent = 'Not connected yet.';
+      formSheetUrlInput.value = '';
+      formAccountColumnInput.value = 'Account Name';
+      disconnectFormAutomationBtn.hidden = true;
+      checkFormNowBtn.hidden = true;
+    }
+    formAutomationModal.hidden = false;
+  }
+  formAutomationBtn.addEventListener('click', openFormAutomationModal);
+  closeFormAutomationModalBtn.addEventListener('click', () => { formAutomationModal.hidden = true; });
+  saveFormAutomationBtn.addEventListener('click', async () => {
+    formAutomationError.textContent = '';
+    if (!canManageFormAutomation()) { formAutomationError.textContent = "Only this server's owner (or an admin+) can do this."; return; }
+    const sheetId = extractSheetId(formSheetUrlInput.value);
+    if (!sheetId) { formAutomationError.textContent = "That doesn't look like a Google Sheets URL (or ID)."; return; }
+    const accountColumn = formAccountColumnInput.value.trim();
+    if (!accountColumn) { formAutomationError.textContent = 'Enter the exact header text of the account-name column.'; return; }
+    saveFormAutomationBtn.disabled = true;
+    try {
+      await fetchGoogleSheetRows(sheetId); // fail fast here if the sheet isn't reachable/shared correctly, rather than silently never posting later
+    } catch (err) {
+      formAutomationError.textContent = err.message;
+      saveFormAutomationBtn.disabled = false;
+      return;
+    }
+    await db.ref('servers/' + currentServerId + '/channels/' + currentChannelId + '/googleForm').set({
+      sheetId, sheetUrl: formSheetUrlInput.value.trim(), accountColumn,
+      connectedBy: myKey, connectedAt: Date.now(),
+    });
+    saveFormAutomationBtn.disabled = false;
+    showToast('Connected - checking for submissions now');
+    await checkGoogleFormForNewSubmissions(currentServerId, currentChannelId);
+    openFormAutomationModal();
+  });
+  disconnectFormAutomationBtn.addEventListener('click', async () => {
+    if (!canManageFormAutomation()) { formAutomationError.textContent = "Only this server's owner (or an admin+) can do this."; return; }
+    if (!confirm('Disconnect this Google Form? Reconnecting later starts over - everyone becomes eligible to trigger a post again.')) return;
+    const base = 'servers/' + currentServerId + '/channels/' + currentChannelId;
+    await db.ref(base + '/googleForm').remove();
+    await db.ref(base + '/googleFormLastRow').remove();
+    await db.ref(base + '/googleFormPosted').remove();
+    showToast('Disconnected');
+    openFormAutomationModal();
+  });
+  checkFormNowBtn.addEventListener('click', async () => {
+    checkFormNowBtn.disabled = true;
+    const result = await checkGoogleFormForNewSubmissions(currentServerId, currentChannelId);
+    checkFormNowBtn.disabled = false;
+    if (!result) return;
+    if (result.error) { showToast(result.error, true); return; }
+    showToast(`Checked - ${result.posted} new post(s), ${result.skippedAlreadyPosted} already posted, ${result.skippedNoAccount} skipped (no matching account)`);
+  });
+
   // --- Reactions ---
   // The classic 6 iMessage tapbacks - one reaction per person per message,
   // same mutual-exclusivity as the old 2-option like/dislike just
@@ -4031,23 +4591,46 @@
     { key: 'question', emoji: '❓', label: 'Question' },
   ];
 
+  // Sits below the message (back in normal flow, inside .msg-body): a
+  // compact "summary" of only the reaction kinds someone actually used,
+  // always visible, plus the full 6-option picker - expanded via the
+  // "add a reaction" icon that lives with reply/edit/delete/pin in the
+  // corner toolbar instead of down here (see the hoverActionsHtml templates
+  // in appendMessage/appendDMMessage), so it visually groups with the rest
+  // of the per-message actions rather than sitting apart on its own.
   function renderReactionsHtml(reactions) {
-    let total = 0, myKind = null;
+    let myKind = null;
     const counts = {};
     REACTION_KINDS.forEach(({ key }) => {
       const count = reactions && reactions[key] ? Object.keys(reactions[key]).filter(k => !isBlocked(k)).length : 0;
       counts[key] = count;
-      total += count;
       if (reactions && reactions[key] && reactions[key][myKey]) myKind = key;
     });
-    const hasAny = total ? ' has-reactions' : '';
-    const buttonsHtml = REACTION_KINDS.map(({ key, emoji, label }) => {
+    const summaryHtml = REACTION_KINDS.filter(({ key }) => counts[key] > 0).map(({ key, emoji, label }) => {
+      const active = myKind === key;
+      return `<button type="button" class="msg-reaction-btn ${active ? 'active' : ''}" data-kind="${key}" data-tooltip="${active ? 'Remove reaction' : label}"><span class="msg-reaction-emoji">${emoji}</span> ${counts[key]}</button>`;
+    }).join('');
+    const pickerHtml = REACTION_KINDS.map(({ key, emoji, label }) => {
       const active = myKind === key;
       const count = counts[key];
       return `<button type="button" class="msg-reaction-btn ${active ? 'active' : ''}" data-kind="${key}" data-tooltip="${active ? 'Remove reaction' : label}"><span class="msg-reaction-emoji">${emoji}</span>${count ? ' ' + count : ''}</button>`;
     }).join('');
-    return `<div class="msg-reactions${hasAny}">${buttonsHtml}</div>`;
+    return `<div class="msg-reactions">
+      <div class="msg-reactions-summary">${summaryHtml}</div>
+      <div class="msg-reactions-picker">${pickerHtml}</div>
+    </div>`;
   }
+
+  function closeAllReactionPickers() {
+    document.querySelectorAll('.msg-reactions.expanded').forEach(el => el.classList.remove('expanded'));
+  }
+  // One shared listener rather than one per message row - wireReactionButtons
+  // runs on every render, so a per-row document listener would leak. Checks
+  // both the reactions block itself and the corner toolbar's add-button,
+  // since a click on that button shouldn't count as "outside".
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.msg-reactions') && !e.target.closest('.msg-reaction-add-btn')) closeAllReactionPickers();
+  });
 
   function wireReactionButtons(container, id, context) {
     container.querySelectorAll('.msg-reaction-btn').forEach(btn => {
@@ -4329,6 +4912,7 @@
   // delimiter pair with something else in the same message.
   const CENSORED_WORDS = ['fuck', 'shit', 'bitch', 'asshole', 'bastard', 'dick', 'piss', 'damn', 'crap'];
   function isCensorEnabled() { return localStorage.getItem('chat_censor_enabled') === '1'; }
+  function isPresenceLogHidden() { return localStorage.getItem('chat_hide_presence_logs') === '1'; }
   function censorText(text) {
     if (!isCensorEnabled()) return text;
     let result = text;
@@ -4952,10 +5536,17 @@
     profileColorInput.value = (myProfile && myProfile.accentColor) || '#e64848';
     afkEnabledCheckbox.checked = localStorage.getItem('chat_afk_enabled') !== '0';
     censorEnabledCheckbox.checked = isCensorEnabled();
+    hidePresenceLogsCheckbox.checked = isPresenceLogHidden();
     profileModalAvatarSlot.innerHTML = window.BackbrainIdentity.avatarHtml(myProfile, 'avatar-circle');
     setBannerPreview(profileModalBannerPreview, myProfile && myProfile.bannerDataUrl);
     removeBannerBtn.hidden = !(myProfile && myProfile.bannerDataUrl);
     profileModalError.textContent = '';
+    currentPasswordInput.value = '';
+    newPasswordInput.value = '';
+    confirmNewPasswordInput.value = '';
+    passwordChangeError.textContent = '';
+    passwordAccordionToggle.classList.remove('open');
+    passwordAccordionContent.classList.remove('open');
     profileModal.hidden = false;
   }
   function setBannerPreview(el, dataUrl) {
@@ -4975,6 +5566,9 @@
   censorEnabledCheckbox.addEventListener('change', () => {
     localStorage.setItem('chat_censor_enabled', censorEnabledCheckbox.checked ? '1' : '0');
     refreshCensorRendering();
+  });
+  hidePresenceLogsCheckbox.addEventListener('change', () => {
+    localStorage.setItem('chat_hide_presence_logs', hidePresenceLogsCheckbox.checked ? '1' : '0');
   });
   afkReturnBtn.addEventListener('click', clearAfk);
   afkSettingsBtn.addEventListener('click', () => {
@@ -5053,6 +5647,36 @@
       profileModalError.textContent = err.message || 'Could not save profile.';
     } finally {
       saveProfileBtn.disabled = false;
+    }
+  });
+
+  passwordAccordionToggle.addEventListener('click', () => {
+    passwordAccordionToggle.classList.toggle('open');
+    passwordAccordionContent.classList.toggle('open');
+  });
+  changePasswordBtn.addEventListener('click', async () => {
+    passwordChangeError.textContent = '';
+    const oldPw = currentPasswordInput.value;
+    const newPw = newPasswordInput.value;
+    if (!oldPw) { passwordChangeError.textContent = 'Enter your current password.'; return; }
+    if (newPw.length < 4) { passwordChangeError.textContent = 'New password must be at least 4 characters.'; return; }
+    if (newPw !== confirmNewPasswordInput.value) { passwordChangeError.textContent = "New passwords don't match."; return; }
+    changePasswordBtn.disabled = true;
+    try {
+      await window.BackbrainIdentity.changePassword(myKey, oldPw, newPw);
+      // Keep quick-login working with the new password if this account is saved on this device.
+      const saved = loadSavedAccounts().find(a => a.key === myKey);
+      if (saved) upsertSavedAccount(myKey, saved.displayName, newPw, saved.pin);
+      currentPasswordInput.value = '';
+      newPasswordInput.value = '';
+      confirmNewPasswordInput.value = '';
+      passwordAccordionToggle.classList.remove('open');
+      passwordAccordionContent.classList.remove('open');
+      showToast('Password updated');
+    } catch (err) {
+      passwordChangeError.textContent = err.message || 'Could not update password.';
+    } finally {
+      changePasswordBtn.disabled = false;
     }
   });
 
@@ -5184,7 +5808,7 @@
   }
 
   // --- Server info modal (leave/delete/invite) ---
-  function openServerInfoModal() {
+  async function openServerInfoModal() {
     const server = myServers.find(s => s.id === currentServerId);
     if (!server) return;
     serverInfoNameEl.textContent = server.name;
@@ -5204,6 +5828,12 @@
     pinServerBtn.textContent = nowPinned ? 'Unpin Server' : 'Pin Server';
     pinServerBtn.dataset.tooltip = nowPinned ? 'Remove from the top of your server rail' : 'Keep at the top of your server rail';
     pinServerBtn.onclick = async () => { await toggleServerPin(server.id); openServerInfoModal(); };
+    clearIntervalError.textContent = '';
+    clearIntervalSection.hidden = !(isOwner || isAtLeast('admin'));
+    if (!clearIntervalSection.hidden) {
+      const intervalMs = (await db.ref('servers/' + server.id + '/clearIntervalMs').once('value')).val() || DEFAULT_CLEAR_INTERVAL_MS;
+      clearIntervalInput.value = formatClearIntervalCompact(intervalMs);
+    }
     if (!isDefault && (isOwner || isAtLeast('owner'))) {
       leaveOrDeleteServerBtn.textContent = 'Delete Server';
       leaveOrDeleteServerBtn.dataset.tooltip = isOwner
@@ -5229,6 +5859,16 @@
   closeServerInfoModalBtn.addEventListener('click', () => { serverInfoModal.hidden = true; });
   copyServerInviteBtn.addEventListener('click', () => {
     navigator.clipboard.writeText(serverInfoInviteId.value).then(() => showToast('Invite ID copied')).catch(() => showToast('Clipboard blocked', true));
+  });
+  saveClearIntervalBtn.addEventListener('click', async () => {
+    clearIntervalError.textContent = '';
+    const server = myServers.find(s => s.id === currentServerId);
+    if (!server || !(server.ownerKey === myKey || isAtLeast('admin'))) { clearIntervalError.textContent = "Only this server's owner (or an admin+) can change this."; return; }
+    const ms = parseClearInterval(clearIntervalInput.value);
+    if (ms === null) { clearIntervalError.textContent = `Enter a value like 30m, 1h, 2d (between ${formatClearIntervalCompact(CLEAR_INTERVAL_MIN_MS)} and ${formatClearIntervalCompact(CLEAR_INTERVAL_MAX_MS)}).`; return; }
+    await db.ref('servers/' + server.id + '/clearIntervalMs').set(ms);
+    clearIntervalInput.value = formatClearIntervalCompact(ms);
+    showToast('Auto-clear interval updated');
   });
 
   sendServerInviteDmBtn.addEventListener('click', async () => {
@@ -5314,9 +5954,12 @@
   });
 
   addChannelBtn.addEventListener('click', () => {
+    if (!isAtLeast('mod')) { showToast('Only a mod or higher can create channels.', true); return; }
     const name = newChannelName.value.trim();
     if (!name) return;
-    createChannel(name);
+    const minRole = newChannelMinRole.value;
+    if (minRole && !isAtLeast(minRole)) { showToast("You can't set a clearance above your own.", true); return; } // defense in depth - the select is already capped, but options don't shrink mid-edit if a role change lands at just the wrong moment
+    createChannel(name, minRole ? { minRole } : undefined);
     newChannelName.value = '';
   });
   newChannelName.addEventListener('keydown', (e) => { if (e.key === 'Enter') addChannelBtn.click(); });

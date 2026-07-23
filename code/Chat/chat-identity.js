@@ -126,6 +126,24 @@
     await profileRef(key).set({ deletedTombstone: true, deletedAt: Date.now() });
   }
 
+  // Re-derives salt+hash in place, same primitive claimOrLogin() uses to set
+  // them originally - requires the CURRENT password (not just being logged
+  // in) since this is the one thing standing between "someone at your
+  // already-unlocked screen" and actually taking over the account going
+  // forward.
+  async function changePassword(key, oldPassword, newPassword) {
+    if (!newPassword || newPassword.length < 4) throw new Error('Choose a new password (at least 4 characters).');
+    const ref = profileRef(key);
+    const existing = (await ref.once('value')).val();
+    if (!existing || existing.deletedTombstone) throw new Error("This account doesn't exist.");
+    const oldHash = await deriveHash(oldPassword, bytesFromB64(existing.salt));
+    if (oldHash !== existing.hash) throw new Error('Current password is incorrect.');
+    const saltBytes = crypto.getRandomValues(new Uint8Array(16));
+    const salt = b64FromBytes(saltBytes);
+    const hash = await deriveHash(newPassword, saltBytes);
+    await ref.update({ salt, hash });
+  }
+
   function saveSession(displayName, password) {
     localStorage.setItem(SESSION_KEY, JSON.stringify({ displayName, password }));
   }
@@ -235,6 +253,7 @@
     uploadBanner,
     removeBanner,
     deleteAccount,
+    changePassword,
     avatarHtml,
     normalizeUsername,
     sanitizeUsernameKey,
